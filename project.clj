@@ -6,14 +6,9 @@
             :year 2018
             :key "mit"}
 
-  :deploy-repositories [["releases" {:sign-releases false
-                                     :url "https://clojars.org"
-                                     :username :env/clojars_username
-                                     :password :env/clojars_token}]
-                        ["snapshots" {:sign-releases false
-                                      :url "https://clojars.org"
-                                      :username :env/clojars_username
-                                      :password :env/clojars_token}]]
+  :deploy-repositories {"clojars" {:sign-releases false
+                                   :username :env/clojars_username
+                                   :password :env/clojars_password}}
 
   :dependencies [[org.clojure/clojure "1.12.0"]
                  [com.stuartsierra/component "1.1.0"]
