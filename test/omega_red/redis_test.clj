@@ -1,14 +1,12 @@
 (ns omega-red.redis-test
   (:require
    [omega-red.test-util :as tu]
-   [com.stuartsierra.component :as component]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [omega-red.protocol :as redis]
    [omega-red.redis]))
 
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
-
                                              (test)))))
 
 (deftest basic-ops-test
