@@ -1,37 +1,32 @@
 (ns omega-red.redis-test
   (:require
-    [clojure.test :refer [deftest is]]
-    [omega-red.protocol :as proto]
-    [omega-red.redis])
-  (:import
-    (omega_red.redis
-      Redis)))
+   [omega-red.test-util :as tu]
+   [com.stuartsierra.component :as component]
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [omega-red.protocol :as redis]
+   [omega-red.redis]))
 
+(use-fixtures :each (fn [test]
+                      (tu/with-test-system (fn []
 
-(def redis-config
-  {:host (or (System/getenv "REDIS_URL") "127.0.0.1")
-   :port (Integer/parseInt (or (System/getenv "REDIS_PORT") "6379"))})
+                                             (test)))))
 
+(deftest basic-ops-test
+  (testing "basic get set del"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= "OK" (redis/execute (tu/conn) [:set "test.some.key" "foo"])))
+    (is (= 1 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= "foo" (redis/execute (tu/conn) [:get "test.some.key"])))
+    (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"])))))
 
-(deftest redis-ops
-  (let [red (.start ^Redis (omega-red.redis/create redis-config))]
-    (is (= 0 (proto/execute red [:exists "test.some.key"])))
-    (is (= "OK" (proto/execute red [:set "test.some.key" "foo"])))
-    (is (= 1 (proto/execute red [:exists "test.some.key"])))
-    (is (= "foo" (proto/execute red [:get "test.some.key"])))
-    (is (= 1 (proto/execute red [:del "test.some.key"])))
-    (.stop ^Redis red)
-    (is (nil? (proto/execute red [:get "test.some.key"])))))
-
-
-(deftest redis-pipelne
-  (let [red (.start ^Redis (omega-red.redis/create redis-config))]
-    (is (= 0 (proto/execute red [:exists "test.some.key.pipe"])))
+(deftest pipelne-test
+  (testing "operations can be pipelined - kinda like transaction"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"])))
     (is (= [nil "OK" "oh ok" 1]
-           (proto/execute-pipeline red
+           (redis/execute-pipeline (tu/conn)
                                    [[:get "test.some.key.pipe"]
                                     [:set "test.some.key.pipe" "oh ok"]
                                     [:get "test.some.key.pipe"]
                                     [:del "test.some.key.pipe"]])))
-    (is (= 0 (proto/execute red [:exists "test.some.key.pipe"])))
-    (.stop ^Redis red)))
+    (testing "once pipeline finishes value is unchanged"
+      (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
