@@ -5,62 +5,60 @@
   (:require
    [com.stuartsierra.component :as component]
    [omega-red.protocol :as proto]
-   [taoensso.carmine.connections :as carmine.connections]
    [taoensso.carmine :as carmine]))
 
-(defn get-redis-fn*
-  "Finds actual function instance, based on a keyword.
-  So:
-  :hset -> taoensso.carmine/hset
-  which then can be used as normal function"
-  [fn-name-keyword]
-  (ns-resolve 'taoensso.carmine (symbol fn-name-keyword)))
-
-(def get-redis-fn (memoize get-redis-fn*))
-
 (defn execute*
-  [conn redis-fn+args]
-  {:pre [(seq redis-fn+args)]}
-  (let [[redis-fn & args] redis-fn+args]
-    (carmine/wcar conn (apply (get-redis-fn redis-fn) args))))
+  "Executes a single Redis command as vector of command and arguments.:
+  (execute* conn [:ping])
+  (execute* conn [:set \"foo\" \"bar\"])"
+  [conn cmd+args]
+  {:pre [(seq cmd+args)]}
+  (carmine/wcar conn
+                (carmine/redis-call cmd+args)))
 
 (defn execute-pipeline*
-  [conn redis-fns+args]
-  {:pre [(seq redis-fns+args)]}
+  "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
+
+  (execute-pipeline* conn [[:ping]
+                           [:set \"foo\" \"bar\"]
+                           [:get \"foo\"]
+                           [:del \"foo\"]])
+  "
+  [conn cmds+args]
+  {:pre [(seq cmds+args)
+         (every? seq cmds+args)]}
   (carmine/wcar conn
                 :as-pipeline
-                (mapv (fn [cmd+args]
-                        (let [redis-fn (get-redis-fn (first cmd+args))]
-                          (apply redis-fn (rest cmd+args))))
-                      redis-fns+args)))
+                (apply carmine/redis-call cmds+args)))
 
 (defrecord Redis
-  [spec conn-pool]
+  [spec pool]
   component/Lifecycle
   (start
     [this]
     ;; XXX: bypass using the 'squirreled away' conn pool and create our own instance
     ;; https://github.com/ptaoussanis/carmine/issues/224
-    (if (:conn-pool this)
+    (if (:pool this)
       this
-      (let [conn-pool (carmine/connection-pool {:test-on-borrow? true})]
-        (assoc this :conn-pool conn-pool))))
+      (let [pool (carmine/connection-pool {:test-on-borrow? true})]
+        (assoc this :pool pool))))
   (stop
     [this]
-    (if-let [conn-pool (:conn-pool this)]
+    (if-let [pool (:pool this)]
       (do
-        (java.io.Closeable/.close conn-pool)
-        (assoc this :conn-pool nil))
+        (java.io.Closeable/.close pool)
+        (assoc this :pool nil))
       this))
   proto/Redis
   (execute
-    [_ redis-fn+args]
-    (execute* {:pool conn-pool} redis-fn+args))
+    [this cmd+args]
+    (execute* this #_{:spec spec :pool pool} cmd+args))
   (execute-pipeline
-    [_ redis-fns+args]
-    (execute-pipeline* {:pool conn-pool} redis-fns+args)))
+    [this cmds+args]
+    (execute-pipeline* this #_{:spec spec :pool pool} cmds+args)))
 
 (defn create
+  ;; TODO: add more of keys supported by `:spec`?
   [{:keys [host port]}]
   {:pre [(string? host)
          (number? port)]}
