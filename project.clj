@@ -15,9 +15,9 @@
                                       :username :env/clojars_username
                                       :password :env/clojars_token}]]
 
-  :dependencies [[org.clojure/clojure "1.10.3"]
+  :dependencies [[org.clojure/clojure "1.12.0"]
                  [com.stuartsierra/component "1.1.0"]
-                 [com.taoensso/carmine "3.1.0"]]
+                 [com.taoensso/carmine "3.4.1"]]
   :global-vars {*warn-on-reflection* true}
   :profiles {:dev
-             {:dependencies  [[org.clojure/tools.logging "1.2.4"]]}})
+             {:dependencies  [[org.clojure/tools.logging "1.3.0"]]}})
