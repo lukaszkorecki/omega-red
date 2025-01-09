@@ -10,6 +10,10 @@
 
 Wraps [Carmine](https://github.com/ptaoussanis/carmine) for better dev ergonomics.
 
+> [!NOTE]
+> This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
+> The original repo is still available for reference.
+
 ### Why wrap?
 
 - provides proper connection pool management, rather than using default memoized pool
@@ -81,6 +85,13 @@ See example below
 
 ## Change log
 
+- 2.0.0 - **Breaking changes**:
+  - takes over from the original repo, with a new Maven coordinate
+  - changes namespace structure
+  - proper connection pool management
+  - faster implementation using Carmine's internals
+  - dependency update
+  - fixes to cache helper
 - 1.1.0 - Clean up and cache helper
 - 1.0.2 - Dependency update
 - 1.0.0-SNAPSHOT - **Breaking change!** Changes signature of `execute` to accept a vector, and `execute-pipeline` to accept a vector of vectors. This makes it easier to work with variadic Redis commands (`hmset` etc) and compose commands
@@ -88,7 +99,7 @@ See example below
 
 # Roadmap
 
-- [ ] explicit connection pool component with its own lifecycle
+- [x] explicit connection pool component with its own lifecycle
 - [ ] *maybe* move off Carmine and use Jedis or Lettuce directly (because of the point above)
 
 
