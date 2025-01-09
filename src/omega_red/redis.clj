@@ -1,65 +1,33 @@
-(ns omega-red.redis
-  "Represents a redis connection spec,
-  so we can use it when using Carmine, unlike the
-  regular `wcar*` macro, recommended in Carmine docs."
-  (:require
-    [com.stuartsierra.component :as component]
-    [omega-red.protocol :as proto]
-    [taoensso.carmine :as carmine]))
+(ns omega-red.redis)
 
-
-(defn get-redis-fn*
-  "Finds actual function instance, based on a keyword.
-  So:
-  :hset -> taoensso.carmine/hset
-  which then can be used as normal function"
-  [fn-name-keyword]
-  (ns-resolve 'taoensso.carmine (symbol fn-name-keyword)))
-
-
-(def get-redis-fn (memoize get-redis-fn*))
-
-
-(defn execute*
-  [conn redis-fn+args]
-  {:pre [(seq redis-fn+args)]}
-  (let [[redis-fn & args] redis-fn+args]
-    (carmine/wcar conn (apply (get-redis-fn redis-fn) args))))
-
-
-(defn execute-pipeline*
-  [conn redis-fns+args]
-  {:pre [(seq redis-fns+args)]}
-  (carmine/wcar conn
-                :as-pipeline
-                (mapv (fn [cmd+args]
-                        (let [redis-fn (get-redis-fn (first cmd+args))]
-                          (apply redis-fn (rest cmd+args))))
-                      redis-fns+args)))
-
-
-(defrecord Redis
-  [pool spec conn]
-  component/Lifecycle
-  (start
-    [this]
-    ;; XXX: figure out how to use a proper connection pool in Carmine, see:
-    ;; https://github.com/ptaoussanis/carmine/issues/224
-    (assoc this :conn {:pool pool :spec spec}))
-  (stop
-    [this]
-    (assoc this :conn nil))
-  proto/Redis
+(defprotocol IRedis
   (execute
-    [_ redis-fn+args]
-    (execute* conn redis-fn+args))
+    [this cmd+args]
+    "Executes single redis command - passed as JDBC-style vector: [:command the rest of args]")
   (execute-pipeline
-    [_ redis-fns+args]
-    (execute-pipeline* conn redis-fns+args)))
+    [this cmds+args]
+    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args. Use omega-red.protocol/excute-pipeline to invoke!"))
 
-
-(defn create
-  [{:keys [host port]}]
-  {:pre [(string? host)
-         (number? port)]}
-  (->Redis {} {:host host :port port} nil))
+(defn cache-get-or-fetch
+  "Tiny helper for the usual 'fetch from cache, and if there's a miss, use fetch function to get the data but also cache it'
+  Args:
+  - `conn` - connection to the cache - instance of `Redis`
+  - `options`
+    - `cache-get` - function to fetch from cache (usally redis), accepts the connection
+    - `fetch` - the function to fetch data from a slow resource
+    - `cache-set` - the function to store data in cache, args are:
+      - `conn` - connection to the cache
+      - `data` - fetched data
+  Note:
+  You need to ensure that resuls of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
+  will cast 1 as string on read!"
+  [conn {:keys [fetch cache-set cache-get]}]
+  {:pre [(satisfies? IRedis conn)
+         (fn? fetch)
+         (fn? cache-set)
+         (fn? cache-get)]}
+  (if-let [from-cache (cache-get conn)]
+    from-cache
+    (let [fetch-res (fetch)]
+      (cache-set conn fetch-res)
+      fetch-res)))

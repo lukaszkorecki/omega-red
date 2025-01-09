@@ -7,15 +7,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   test:
     strategy:
       fail-fast: false
       matrix:
         version:
           - "redis:latest"
-          - "redis:6"
-          - "redis:5"
+          - "redis:7"
 
     runs-on: ubuntu-latest
     container:

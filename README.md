@@ -1,15 +1,20 @@
 # omega-red
 
 
-[![Clojars Project](https://img.shields.io/clojars/v/nomnom/omega-red.svg)](https://clojars.org/nomnom/omega-red)
+[![Clojars Project](https://img.shields.io/clojars/v/lukaszkorecki/omega-red.svg)](https://clojars.org/nomnom/omega-red)
 
 <img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" heighth="400px" align=right >
 
-## A Redis component, based on [Carmine](https://github.com/ptaoussanis/carmine)
+## A Redis component
 
-A simple Redis client wrapping [Carmine](https://github.com/ptaoussanis/carmine)
-It's not meant to be a fancy DSL or an ORM. Just helps with componentizing the connection
-and invoking Redis commands in more idiomatic way, without using macros, like the `wcar*` macro in Carmine's readme.
+
+Wraps [Carmine](https://github.com/ptaoussanis/carmine) for better dev ergonomics.
+
+### Why wrap?
+
+- provides proper connection pool management, rather than using default memoized pool
+- data-driven API for Redis commands
+- *technically* makes it possible to swap underlying Redis client (Carmine) for something else, if needed while keeping the API the same
 
 
 #### Design
@@ -34,17 +39,17 @@ See example below
 
 ```clojure
 (ns omega-red.redis-test
-  (:require [omega-red.protocol :as redis]
-            [omega-red.redis]
+  (:require [omega-red.redis :as redis]
+            [omega-red.client :as redis.client]
             [com.stuartsierra.component :as component]))
 
-(let [conn (componet/start (omega-red.redis/create {:host "127.0.0.1" :port 6379}))]
+(let [conn (componet/start (redis.client/create {:host "127.0.0.1" :port 6379}))]
     (is (= 0 (redis/execute conn [:exists "test.some.key"]))) ; true
     (is (= "OK" (redis/execute conn [:set "test.some.key" "foo"]))) ; true
     (is (= 1 (redis/execute conn [:exists "test.some.key"]))) ; true
     (is (= "foo" (redis/execute conn [:get "test.some.key"]))) ; true
     (is (= 1 (redis/execute conn [:del "test.some.key"]))) ; true
-    (component/stop red)
+    (component/stop conn)
     (is (nil? (redis/execute conn [:get "test.some.key"])))) ; true
 
 ;; pipeline execution
@@ -58,17 +63,17 @@ See example below
 
 ;; caching example
 (let [fetch! (fn []
-               (redis/cache-get-or-fetch {:fetch (fn [] (slurp "http://example.com"))
-                                          :cache-set (fn [fetch-res]
-                                                       (redis/execute conn [:setex "example" 10 fetch-res]))
-                                          :cache-get (fn []
-                                                       (redis/exeucte conn [:get "example"]))}))]
+               (redis/cache-get-or-fetch conn {:fetch (fn [] (slurp "http://example.com"))
+                                               :cache-set (fn [conn fetch-res]
+                                                            (redis/execute conn [:setex "example" 10 fetch-res]))
+                                               :cache-get (fn [conn]
+                                                            (redis/exeucte conn [:get "example"]))}))]
 
-   (fetch!) ;; => returns contents of http://example.com as a result of direct call
-   (fetch!) ;; => pulls from cache
-   (fetch!) ;; => pulls from cache
-   (Thread/sleep (* 10 1000))
-   (fetch!)) ;; => makes http request again
+  (fetch!) ;; => returns contents of http://example.com as a result of direct call
+  (fetch!) ;; => pulls from cache
+  (fetch!) ;; => pulls from cache
+  (Thread/sleep (* 10 1000))
+  (fetch!)) ;; => makes http request again
 ```
 
 
