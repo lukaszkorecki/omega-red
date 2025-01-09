@@ -1,6 +1,6 @@
 (ns omega-red.test-util
   (:require
-   [omega-red.redis :as redis.client]
+   [omega-red.client :as redis.client]
    [com.stuartsierra.component :as component]))
 
 (def redis-config

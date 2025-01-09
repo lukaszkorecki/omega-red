@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [omega-red.test-util :as tu]
-   [omega-red.protocol :as redis]
-   [omega-red.redis]))
+   [omega-red.redis :as redis]))
 
 (def state (atom 0))
 
@@ -27,10 +26,10 @@
                                                                           (redis/execute conn [:set "testing:1" fetch-result]))})]
       (is (= 1 (get-or-fetch)))
       (testing "continous calls to stateful change the state but cached value is the same"
-      (is (= 2 (stateful)))
-      (is (= 3 (stateful)))
+        (is (= 2 (stateful)))
+        (is (= 3 (stateful)))
 
-      (is (= 1 (get-or-fetch))))
+        (is (= 1 (get-or-fetch))))
 
       (testing "cache is invalidated invalidation scenario"
         (redis/execute (tu/conn) [:del "testing:1"])

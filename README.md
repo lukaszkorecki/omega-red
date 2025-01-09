@@ -39,17 +39,17 @@ See example below
 
 ```clojure
 (ns omega-red.redis-test
-  (:require [omega-red.protocol :as redis]
-            [omega-red.redis]
+  (:require [omega-red.redis :as redis]
+            [omega-red.client :as redis.client]
             [com.stuartsierra.component :as component]))
 
-(let [conn (componet/start (omega-red.redis/create {:host "127.0.0.1" :port 6379}))]
+(let [conn (componet/start (redis.client/create {:host "127.0.0.1" :port 6379}))]
     (is (= 0 (redis/execute conn [:exists "test.some.key"]))) ; true
     (is (= "OK" (redis/execute conn [:set "test.some.key" "foo"]))) ; true
     (is (= 1 (redis/execute conn [:exists "test.some.key"]))) ; true
     (is (= "foo" (redis/execute conn [:get "test.some.key"]))) ; true
     (is (= 1 (redis/execute conn [:del "test.some.key"]))) ; true
-    (component/stop red)
+    (component/stop conn)
     (is (nil? (redis/execute conn [:get "test.some.key"])))) ; true
 
 ;; pipeline execution

@@ -1,65 +1,33 @@
-(ns omega-red.redis
-  "Represents a redis connection spec,
-  so we can use it when using Carmine, unlike the
-  regular `wcar*` macro, recommended in Carmine docs."
-  (:require
-   [com.stuartsierra.component :as component]
-   [omega-red.protocol :as proto]
-   [taoensso.carmine :as carmine]))
+(ns omega-red.redis)
 
-(defn execute*
-  "Executes a single Redis command as vector of command and arguments.:
-  (execute* conn [:ping])
-  (execute* conn [:set \"foo\" \"bar\"])"
-  [conn cmd+args]
-  {:pre [(seq cmd+args)]}
-  (carmine/wcar conn
-                (carmine/redis-call cmd+args)))
-
-(defn execute-pipeline*
-  "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
-
-  (execute-pipeline* conn [[:ping]
-                           [:set \"foo\" \"bar\"]
-                           [:get \"foo\"]
-                           [:del \"foo\"]])
-  "
-  [conn cmds+args]
-  {:pre [(seq cmds+args)
-         (every? seq cmds+args)]}
-  (carmine/wcar conn
-                :as-pipeline
-                (apply carmine/redis-call cmds+args)))
-
-(defrecord Redis
-  [spec pool]
-  component/Lifecycle
-  (start
-    [this]
-    ;; XXX: bypass using the 'squirreled away' conn pool and create our own instance
-    ;; https://github.com/ptaoussanis/carmine/issues/224
-    (if (:pool this)
-      this
-      (let [pool (carmine/connection-pool {:test-on-borrow? true})]
-        (assoc this :pool pool))))
-  (stop
-    [this]
-    (if-let [pool (:pool this)]
-      (do
-        (java.io.Closeable/.close pool)
-        (assoc this :pool nil))
-      this))
-  proto/Redis
+(defprotocol IRedis
   (execute
     [this cmd+args]
-    (execute* this #_{:spec spec :pool pool} cmd+args))
+    "Executes single redis command - passed as JDBC-style vector: [:command the rest of args]")
   (execute-pipeline
     [this cmds+args]
-    (execute-pipeline* this #_{:spec spec :pool pool} cmds+args)))
+    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args. Use omega-red.protocol/excute-pipeline to invoke!"))
 
-(defn create
-  ;; TODO: add more of keys supported by `:spec`?
-  [{:keys [host port]}]
-  {:pre [(string? host)
-         (number? port)]}
-  (map->Redis {:spec {:host host :port port}}))
+(defn cache-get-or-fetch
+  "Tiny helper for the usual 'fetch from cache, and if there's a miss, use fetch function to get the data but also cache it'
+  Args:
+  - `conn` - connection to the cache - instance of `Redis`
+  - `options`
+    - `cache-get` - function to fetch from cache (usally redis), accepts the connection
+    - `fetch` - the function to fetch data from a slow resource
+    - `cache-set` - the function to store data in cache, args are:
+      - `conn` - connection to the cache
+      - `data` - fetched data
+  Note:
+  You need to ensure that resuls of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
+  will cast 1 as string on read!"
+  [conn {:keys [fetch cache-set cache-get]}]
+  {:pre [(satisfies? IRedis conn)
+         (fn? fetch)
+         (fn? cache-set)
+         (fn? cache-get)]}
+  (if-let [from-cache (cache-get conn)]
+    from-cache
+    (let [fetch-res (fetch)]
+      (cache-set conn fetch-res)
+      fetch-res)))
