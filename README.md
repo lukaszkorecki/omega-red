@@ -1,7 +1,8 @@
 # omega-red
 
 
-[![Clojars Project](https://img.shields.io/clojars/v/lukaszkorecki/omega-red.svg)](https://clojars.org/nomnom/omega-red)
+[![Clojars Project](https://img.shields.io/clojars/v/org.clojars.lukaszkorecki/omega-red.svg)](https://clojars.org/org.clojars.lukaszkorecki/omega-red)
+
 
 <img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" heighth="400px" align=right >
 
