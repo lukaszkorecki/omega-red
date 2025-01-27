@@ -46,7 +46,11 @@
   key
   taoensso.carmine/key)
 
-(def redis-cmds (edn/read-string (slurp (io/resource "carmine-commands.edn"))))
+(def redis-cmds (-> "carmine-commands.edn"
+                    io/resource
+                    slurp
+                    edn/read-string
+                    (update-keys #(-> % str/lower-case keyword))))
 
 ;; TODO: use `redis-cmds` to:
 ;; - create a map of command->key-transformer-type - either single or variadic
@@ -97,8 +101,8 @@
   (cache-get-or-fetch conn {:fetch f
                             :cache-get (fn cache-get' [conn]
                                          (execute conn [:get key]))
-                            :cache-set (fn cache-set' [conn v]
-                                         (execute conn [:setex key v expiry-s]))}))
+                            :cache-set (fn cache-set' [conn val]
+                                         (execute conn [:setex key expiry-s val]))}))
 
 (defn redis-client?
   "Can we use `thing` as a redis client?"
