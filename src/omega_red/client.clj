@@ -7,32 +7,13 @@
    [omega-red.redis :as redis]
    [taoensso.carmine :as carmine]))
 
-(defn execute*
-  "Executes a single Redis command as vector of command and arguments.:
-  (execute* conn [:ping])
-  (execute* conn [:set \"foo\" \"bar\"])"
-  [conn cmd+args]
-  {:pre [(seq cmd+args)]}
-  (carmine/wcar conn
-                (carmine/redis-call cmd+args)))
-
-(defn execute-pipeline*
-  "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
-
-  (execute-pipeline* conn [[:ping]
-                           [:set \"foo\" \"bar\"]
-                           [:get \"foo\"]
-                           [:del \"foo\"]])
-  "
-  [conn cmds+args]
-  {:pre [(seq cmds+args)
-         (every? seq cmds+args)]}
-  (carmine/wcar conn
-                :as-pipeline
-                (apply carmine/redis-call cmds+args)))
-
 (defrecord Redis
-  [spec pool]
+  [;; inputs
+   spec
+   options
+
+   ;; derived state
+   pool]
   component/Lifecycle
   (start
     [this]
@@ -52,14 +33,23 @@
   redis/IRedis
   (execute
     [this cmd+args]
-    (execute* this cmd+args))
+    (redis/execute! this cmd+args))
   (execute-pipeline
     [this cmds+args]
-    (execute-pipeline* this cmds+args)))
+    (redis/execute-pipeline! this cmds+args)))
+
+;; Hmmm https://github.com/redis/redis-doc/blob/master/commands.json
+;; there is a programatic way of figuring out which argument(s) are keys
+;; and could be automatically prefixed
 
 (defn create
-  ;; TODO: add more of keys supported by `:spec`?
-  [{:keys [host port]}]
-  {:pre [(string? host)
-         (number? port)]}
-  (map->Redis {:spec {:host host :port port}}))
+  "Creates a Redis connection component.
+  Args:
+  - `conn-spec` - a map, same one as `:spec` key of map that `wcar` macro accepts
+  - `options` - optional, a map of:
+     - `:key-prefix` - a prefix for all keys, usually a service name
+     - `:auto-prefix-commands` - a set with keywords as commands that should have the prefix added automatically to the key, defaults to all commands, takes effect only if `key-prefix` is set"
+  ([conn-spec]
+   (create conn-spec {}))
+  ([conn-spec options]
+   (map->Redis {:spec conn-spec :options options})))
