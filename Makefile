@@ -1,10 +1,10 @@
 # Assumes shared configs and secrets!
 
 fmt:
-	cljstyle fix .
+	clojure-lsp format
 
 lint:
-	clj-kondo --lint .
+	clojure-lsp diagnostics
 
 
 deploy:

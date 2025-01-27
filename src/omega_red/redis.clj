@@ -19,8 +19,8 @@
 
 (defn execute!
   "Executes a single Redis command as vector of command and arguments.:
-  (execute* conn [:ping])
-  (execute* conn [:set \"foo\" \"bar\"])"
+  (execute! conn [:ping])
+  (execute! conn [:set \"foo\" \"bar\"])"
   [conn cmd+args]
   {:pre [(seq cmd+args)]}
   (carmine/wcar conn
@@ -29,7 +29,7 @@
 (defn execute-pipeline!
   "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
 
-  (execute-pipeline* conn [[:ping]
+  (execute-pipeline! conn [[:ping]
                            [:set \"foo\" \"bar\"]
                            [:get \"foo\"]
                            [:del \"foo\"]])
