@@ -33,13 +33,34 @@
     (is (= [:get "one"]
            (redis/apply-key-prefixes {}
                                      [:get "one"]))))
+
+  (testing "works with commands which do not accept keys"
+    (is (= [:ping]
+           (redis/apply-key-prefixes {:prefix "test"}
+                                     [:ping])))
+
+    (is (= [:keys "foo*"]
+           (redis/apply-key-prefixes {:prefix "lol"}
+                                     [:keys "foo*"]))))
   (testing "simple case"
     (is (= [:get "foo:one"]
            (redis/apply-key-prefixes {:prefix "foo"}
                                      [:get "one"]))))
 
-  (testing "multi-key no extra args"
+  (testing "simple case with extra args that are not keys"
+    (is (= [:set "foo:one" "bar"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:set "one" "bar"])))
 
+    (is (= [:setex "foo:one" 10 "val"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:setex "one" 10 "val"])))
+
+    (is (= [:hmget "foo:one" "k1" "k2"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:hmget "one" "k1" "k2"]))))
+
+  (testing "multi-key no extra args"
     (is (= [:exists "foo:one" "foo:two" "foo:three"]
            (redis/apply-key-prefixes {:prefix "foo"}
                                      [:exists "one" "two" "three"])))
@@ -54,4 +75,14 @@
                                      [:blpop "one" 10])))
     (is (= [:blpop "foo:one" "foo:two" "foo:three" 10]
            (redis/apply-key-prefixes {:prefix "foo"}
-                                     [:blpop "one" "two" "three" 10])))))
+                                     [:blpop "one" "two" "three" 10]))))
+
+  (testing "prefix can be a keyword"
+    (is (= [:get "foo:one"]
+           (redis/apply-key-prefixes {:prefix :foo}
+                                     [:get "one"]))))
+
+  (testing "prefix can be a namespaced keyword"
+    (is (= [:get "omega-red.redis-test/foo.bar:one"]
+           (redis/apply-key-prefixes {:prefix ::foo.bar}
+                                     [:get "one"])))))
