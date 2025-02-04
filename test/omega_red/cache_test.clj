@@ -2,43 +2,43 @@
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [omega-red.test-util :as tu]
-   [omega-red.redis :as redis]))
+   [omega-red.redis :as redis]
+   [omega-red.cache :as redis.cache]))
 
 (def state (atom 0))
 
 (defn stateful []
-  (swap! state inc))
+  (str (swap! state inc)))
 
-(use-fixtures :once (fn [test]
+(use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
                                              (reset! state 0)
-                                             (redis/execute (tu/conn) [:del "testing:1"])
-                                             (redis/execute (tu/conn) [:del "testing:2"])
+                                             (redis/execute (tu/conn) [:del "testing:1" "testing:2" "bananas"])
                                              (test)))))
 
-(deftest cache-test
+(deftest fetch-or-get-test
   (testing "caches result of fetch call"
-    (let [get-or-fetch #(redis/cache-get-or-fetch (tu/conn) {:fetch stateful
+    (let [get-or-fetch #(redis.cache/get-or-fetch (tu/conn) {:fetch stateful
                                                              :cache-get (fn cache-get' [conn]
                                                                           (when-let [val (redis/execute conn [:get "testing:1"])]
-                                                                            (parse-long val)))
+                                                                            val))
                                                              :cache-set (fn cache-set' [conn fetch-result]
                                                                           (redis/execute conn [:set "testing:1" fetch-result]))})]
-      (is (= 1 (get-or-fetch)))
+      (is (= "1" (get-or-fetch)))
       (testing "continous calls to stateful change the state but cached value is the same"
-        (is (= 2 (stateful)))
-        (is (= 3 (stateful)))
+        (is (= "2" (stateful)))
+        (is (= "3" (stateful)))
 
-        (is (= 1 (get-or-fetch))))
+        (is (= "1" (get-or-fetch))))
 
-      (testing "cache is invalidated invalidation scenario"
+      (testing "cache is invalidated somehow"
         (redis/execute (tu/conn) [:del "testing:1"])
         ;; new state is returned!
-        (is (= 4 (get-or-fetch)))
-        (is (= 5 (stateful))))))
+        (is (= "4" (get-or-fetch)))
+        (is (= "5" (stateful))))))
 
   (testing "different data types"
-    (let [get-or-fetch #(redis/cache-get-or-fetch (tu/conn) {:fetch (fn [] (str (stateful)))
+    (let [get-or-fetch #(redis.cache/get-or-fetch (tu/conn) {:fetch (fn [] (str (stateful)))
                                                              :cache-get (fn cache-get' [conn]
                                                                           (redis/execute conn [:hget "testing:2" "foo"]))
                                                              :cache-set (fn cache-set' [conn fetch-result]
@@ -46,7 +46,24 @@
       ;; increments again because we're checking a different cache key!
       (is (= "6" (get-or-fetch)))
       (is (= "6" (get-or-fetch)))
-      (is (= 7 (stateful)))
+      (is (= "7" (stateful)))
       (is (= "6" (get-or-fetch)))
       (redis/execute (tu/conn) [:del "testing:2"])
       (is (= "8" (get-or-fetch))))))
+
+(deftest memoize-with-ex-test
+
+  (testing "stores value in Redis and expires after N s"
+    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))
+    (Thread/sleep 1000)
+    (is (= "2" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))
+    (is (= "2" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
+                                                                    :expiry-s 1})))))

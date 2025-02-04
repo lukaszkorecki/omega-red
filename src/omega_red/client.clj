@@ -18,8 +18,9 @@
   component/Lifecycle
   (start
     [this]
-    ;; XXX: bypass using the 'squirreled away' conn pool and create our own instance
+    ;; XXX: bypass the 'squirreled away' conn pool and create our own instance
     ;; https://github.com/ptaoussanis/carmine/issues/224
+    ;; NOTE: This will break most likely in Carmine v4?
     (if (:pool this)
       this
       (let [pool (carmine/connection-pool {:test-on-borrow? true})]
@@ -29,7 +30,7 @@
     (if-let [pool (:pool this)]
       (do
         (java.io.Closeable/.close pool)
-        (assoc this :pool nil))
+        (assoc this :pool nil :key-prefix nil))
       this))
   redis/IRedis
   (execute
@@ -41,17 +42,12 @@
     (redis/execute-pipeline! this
                              (mapv #(redis/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
 
-;; Hmmm https://github.com/redis/redis-doc/blob/master/commands.json
-;; there is a programatic way of figuring out which argument(s) are keys
-;; and could be automatically prefixed
-
 (defn create
   "Creates a Redis connection component.
   Args:
-  - `conn-spec` - a map, same one as `:spec` key of map that `wcar` macro accepts
+  - `conn-spec` - a map, same  as `:spec` key of map that `carmine/wcar` macro accepts
   - `options` - optional, a map of:
-     - `:key-prefix` - a prefix for all keys, usually a service name
-     - `:auto-prefix-commands` - a set with keywords as commands that should have the prefix added automatically to the key, defaults to all commands, takes effect only if `key-prefix` is set"
+     - `:key-prefix` - a prefix for all keys, usually a service name - can be a string or keyword"
   ([conn-spec]
    (create conn-spec {}))
   ([conn-spec options]

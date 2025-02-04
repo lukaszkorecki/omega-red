@@ -4,7 +4,6 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [taoensso.carmine :as carmine]))
 
 (defprotocol IRedis
@@ -88,53 +87,6 @@
         (throw (ex-info "not sure how to deal with this" {:cmd+args cmd+args}))))
     ;; no key to deal with
     cmd+args))
-
-;; Utilities & helpers
-
-(defn cache-get-or-fetch
-  "Tiny helper for the usual 'fetch from cache, and if there's a miss, use fetch function to get the data but also cache it'
-  Note that, only truthy values are considered cache hits!
-  Args:
-  - `conn` - connection to the cache - instance of `Redis`
-  - `options`
-    - `cache-get` - function to fetch from Redis, accepts the connection as its first arg
-    - `fetch` - the function to fetch data from a slow resource
-    - `cache-set` - the function to store data in cache, args are:
-      - `conn` - connection to the cache
-      - `data` - fetched data
-  Note:
-  You need to ensure that resuls of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
-  will cast 1 as string on read!"
-  [conn {:keys [fetch cache-set cache-get]}]
-  {:pre [(satisfies? IRedis conn)
-         (fn? fetch)
-         (fn? cache-set)
-         (fn? cache-get)]}
-  (if-let [from-cache (cache-get conn)]
-    from-cache
-    (let [fetch-res (fetch)]
-      (cache-set conn fetch-res)
-      fetch-res)))
-
-(defn memoize-with-expiry
-  "Similat to `clojure.core/memoize` but for Redis. The signature differs since we need a `key` for lookup.
-  Assumes that cached value can be `SETEX` and `GET`-ed.
-  Args:
-  - `conn` - connection to Redis
-  - `f` - the function to memoize
-  Opt-map:
-  - `key` - the key to use for lookup
-  - `expiry-s` - expiry in seconds
-  "
-  [conn f {:keys [key expiry-s]}]
-  {:pre [(fn? f)
-         (and (number? expiry-s) (pos? expiry-s))
-         (not (str/blank? key))]}
-  (cache-get-or-fetch conn {:fetch f
-                            :cache-get (fn cache-get' [conn]
-                                         (execute conn [:get key]))
-                            :cache-set (fn cache-set' [conn val]
-                                         (execute conn [:setex key expiry-s val]))}))
 
 (defn redis-client?
   "Can we use `thing` as a redis client?"
