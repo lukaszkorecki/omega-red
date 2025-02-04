@@ -54,16 +54,22 @@
 (deftest memoize-with-ex-test
 
   (testing "stores value in Redis and expires after N s"
-    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))
-    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))
-    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))
-    (is (= "1" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))
+    (is (= "1" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))
     (Thread/sleep 1000)
-    (is (= "2" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))
-    (is (= "2" (redis.cache/memoize-with-expiry (tu/conn) stateful {:key "bananas"
-                                                                    :expiry-s 1})))))
+    (is (= "2" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))
+    (is (= "2" (redis.cache/memoize (tu/conn) {:key "bananas"
+                                               :fetch-fn stateful
+                                               :expiry-s 1})))))
