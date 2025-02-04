@@ -43,19 +43,51 @@
 
 ;; alias key to taoensso.carmine/key, but with docstring
 (def ^{:doc (:doc (meta (var taoensso.carmine/key)))}
-  key
+  build-key
   taoensso.carmine/key)
 
-(def redis-cmds (-> "carmine-commands.edn"
-                    io/resource
-                    slurp
-                    edn/read-string
-                    (update-keys #(-> % str/lower-case keyword))))
+;; See 'script' in dev-resources/omega_red/gen_cmd_config.clj for the code which generates this
+;; The config is a map of:
+;; { <cmd-kw> {:non-key-args-tail-count <int> :type <multi|single> :summary <str> :all-args <vec-of-str>}}
+;; It basically tells us how many keys are in given command vector (one/many) and how many non-key args are at the end
+;; so that it can be used to apply key prefixes, using 'key' function
+(def redis-cmd-config
+  (-> "redis-cmd-key-config.edn"
+      io/resource
+      slurp
+      edn/read-string))
 
-;; TODO: use `redis-cmds` to:
-;; - create a map of command->key-transformer-type - either single or variadic
-;; - a function to detect key transformation based on the command
-;; - a function to transform keys based on the command
+(defn apply-key-prefixes
+  "Applies key prefix to the command and its arguments.
+  It detects if given command accepts a key or a variadic number of keys
+  and applies prefixes to them.
+  NOTE: in most cases, the key is the first argument, followed by
+  multiple keys with no extra arguments, and finally in very few cases
+  a list of keys + optional arg is accepted. This fn applies prefixes to the keys only.
+  "
+  [{:keys [prefix]} cmd+args]
+  (if-let [cmd-key-conf (and prefix
+                             (get redis-cmd-config (first cmd+args)))]
+    (let [{:keys [non-key-args-tail-count type]} cmd-key-conf]
+      (cond
+        ;; easy - 1st arg is key
+        (= :single type) (update-in cmd+args [1] #(build-key prefix %))
+
+        ;; a bit more complex - all args are keys
+        (and (= :multi type) (zero? non-key-args-tail-count))
+        (vec (concat [(first cmd+args)] (map #(build-key prefix %) (rest cmd+args))))
+
+        ;; worst case scenario
+        (and (= :multi type) (pos? non-key-args-tail-count))
+        (let [[cmd & args] cmd+args]
+          (vec
+           (concat [cmd]
+                   (map #(build-key prefix %) (drop-last non-key-args-tail-count args))
+                   (drop (- (count args) non-key-args-tail-count) args))))
+        :else
+        (throw (ex-info "not sure how to deal with this" {:cmd+args cmd+args}))))
+    ;; no key to deal with
+    cmd+args))
 
 ;; Utilities & helpers
 

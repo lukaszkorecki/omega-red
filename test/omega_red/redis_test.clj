@@ -27,3 +27,31 @@
                                     [:del "test.some.key.pipe"]])))
     (testing "once pipeline finishes value is unchanged"
       (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
+
+(deftest key-prefixing-test
+  (testing "no prefix - nothing happens"
+    (is (= [:get "one"]
+           (redis/apply-key-prefixes {}
+                                     [:get "one"]))))
+  (testing "simple case"
+    (is (= [:get "foo:one"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:get "one"]))))
+
+  (testing "multi-key no extra args"
+
+    (is (= [:exists "foo:one" "foo:two" "foo:three"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:exists "one" "two" "three"])))
+
+    (is (= [:del "foo:one" "foo:two" "foo:three"]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:del "one" "two" "three"]))))
+
+  (testing "mulit key with extra arg"
+    (is (= [:blpop "foo:one" 10]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:blpop "one" 10])))
+    (is (= [:blpop "foo:one" "foo:two" "foo:three" 10]
+           (redis/apply-key-prefixes {:prefix "foo"}
+                                     [:blpop "one" "two" "three" 10])))))

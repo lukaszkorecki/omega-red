@@ -6,6 +6,12 @@ fmt:
 lint:
 	clojure-lsp diagnostics
 
+prep-resources:
+	lein run -m omega-red.gen-cmd-config
 
-deploy:
+test: prep-resources
+	lein test
+
+
+deploy: prep-resources
 	lein deploy clojars
