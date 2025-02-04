@@ -13,6 +13,7 @@
    options
 
    ;; derived state
+   key-prefix
    pool]
   component/Lifecycle
   (start
@@ -22,7 +23,7 @@
     (if (:pool this)
       this
       (let [pool (carmine/connection-pool {:test-on-borrow? true})]
-        (assoc this :pool pool))))
+        (assoc this :pool pool :key-prefix (:key-prefix options)))))
   (stop
     [this]
     (if-let [pool (:pool this)]
@@ -33,10 +34,12 @@
   redis/IRedis
   (execute
     [this cmd+args]
-    (redis/execute! this cmd+args))
+    (redis/execute! this
+                    (redis/apply-key-prefixes {:key-prefix key-prefix} cmd+args)))
   (execute-pipeline
     [this cmds+args]
-    (redis/execute-pipeline! this cmds+args)))
+    (redis/execute-pipeline! this
+                             (mapv #(redis/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
 
 ;; Hmmm https://github.com/redis/redis-doc/blob/master/commands.json
 ;; there is a programatic way of figuring out which argument(s) are keys
@@ -52,4 +55,7 @@
   ([conn-spec]
    (create conn-spec {}))
   ([conn-spec options]
+   {:pre [(or (string? (:key-prefix options))
+              (keyword? (:key-prefix options))
+              (nil? (:key-prefix options)))]}
    (map->Redis {:spec conn-spec :options options})))

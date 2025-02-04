@@ -65,24 +65,24 @@
   multiple keys with no extra arguments, and finally in very few cases
   a list of keys + optional arg is accepted. This fn applies prefixes to the keys only.
   "
-  [{:keys [prefix]} cmd+args]
-  (if-let [cmd-key-conf (and prefix
+  [{:keys [key-prefix]} cmd+args]
+  (if-let [cmd-key-conf (and key-prefix
                              (get redis-cmd-config (first cmd+args)))]
     (let [{:keys [non-key-args-tail-count type]} cmd-key-conf]
       (cond
         ;; easy - 1st arg is key
-        (= :single type) (update-in cmd+args [1] #(build-key prefix %))
+        (= :single type) (update-in cmd+args [1] #(build-key key-prefix %))
 
         ;; a bit more complex - all args are keys
         (and (= :multi type) (zero? non-key-args-tail-count))
-        (vec (concat [(first cmd+args)] (map #(build-key prefix %) (rest cmd+args))))
+        (vec (concat [(first cmd+args)] (map #(build-key key-prefix %) (rest cmd+args))))
 
         ;; worst case scenario
         (and (= :multi type) (pos? non-key-args-tail-count))
         (let [[cmd & args] cmd+args]
           (vec
            (concat [cmd]
-                   (map #(build-key prefix %) (drop-last non-key-args-tail-count args))
+                   (map #(build-key key-prefix %) (drop-last non-key-args-tail-count args))
                    (drop (- (count args) non-key-args-tail-count) args))))
         :else
         (throw (ex-info "not sure how to deal with this" {:cmd+args cmd+args}))))
