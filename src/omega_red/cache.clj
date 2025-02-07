@@ -28,7 +28,8 @@
   (if-let [from-cache (cache-get conn)]
     from-cache
     (let [fetch-res (fetch)]
-      (cache-set conn fetch-res)
+      (when fetch-res
+        (cache-set conn fetch-res))
       fetch-res)))
 
 (defn memoize
