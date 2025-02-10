@@ -28,6 +28,21 @@
     (testing "once pipeline finishes value is unchanged"
       (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
 
+(deftest clj-data-test
+  (testing "get set del with a clojure map"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= "OK" (redis/execute (tu/conn) [:set "test.some.key" {:foo 1}])))
+    (is (= 1 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= {:foo 1} (redis/execute (tu/conn) [:get "test.some.key"])))
+    (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"]))))
+
+  (testing "get set del with a clojure set"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= "OK" (redis/execute (tu/conn) [:set "test.some.key" #{{:bar 1} {:foo 1}}])))
+    (is (= 1 (redis/execute (tu/conn) [:exists "test.some.key"])))
+    (is (= #{{:bar 1} {:foo 1}} (redis/execute (tu/conn) [:get "test.some.key"])))
+    (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"])))))
+
 (deftest key-prefixing-test
   (testing "no prefix - nothing happens"
     (is (= [:get "one"]
