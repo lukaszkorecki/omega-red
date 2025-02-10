@@ -48,5 +48,5 @@ jobs:
       id: tests
       run: lein test 2>&1
       env:
-        REDIS_URL: redis
+        REDIS_HOST: redis
         REDIS_PORT: 6379

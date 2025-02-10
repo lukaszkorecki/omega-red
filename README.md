@@ -33,6 +33,33 @@ If you want to mock the component - you'll need something that implements the fo
 
 and fakes Redis behavior as needed.
 
+##### Key prefixes
+
+In a lot of environment you'll want to prefix keys in case of shared Redis instances. Omega Red will figure out for you which parts of Redis commands
+are keys and will prefix them automatically for you. Auto-prefixing is enabled by setting `:key-prefix` in options map when creating the component:
+
+```clojure
+(ns omega-red.redis-test
+  (:require [omega-red.redis :as redis]
+            [omega-red.client :as redis.client]
+            [com.stuartsierra.component :as component]))
+
+
+
+
+(def srv1-client (redis.client/redis-client {:host "localhost" :port 6379}
+                                            {:key-prefix "srv1"}))
+
+(def srv2-client (redis.client/redis-client {:host "localhost" :port 6379}
+                                            {:key-prefix ::srv2}))
+
+
+(redis/execute srv1-client [:set "foo" "1"]) ;; => "OK", would set key "srv1:foo"
+(redis/execute srv2-client [:set "foo" "2"]) ;; => "OK", would set key "srv2:foo"
+
+;; HOWEVER:
+(redis/execute srv1-client [:keys "foo*"]) ;; => [] - because of autoprefixing!
+```
 
 ##### Cache helper
 
@@ -45,17 +72,18 @@ See example below
 ```clojure
 (ns omega-red.redis-test
   (:require [omega-red.redis :as redis]
+            [omega-red.cache :as cache]
             [omega-red.client :as redis.client]
             [com.stuartsierra.component :as component]))
 
 (let [conn (componet/start (redis.client/create {:host "127.0.0.1" :port 6379}))]
-    (is (= 0 (redis/execute conn [:exists "test.some.key"]))) ; true
-    (is (= "OK" (redis/execute conn [:set "test.some.key" "foo"]))) ; true
-    (is (= 1 (redis/execute conn [:exists "test.some.key"]))) ; true
-    (is (= "foo" (redis/execute conn [:get "test.some.key"]))) ; true
-    (is (= 1 (redis/execute conn [:del "test.some.key"]))) ; true
-    (component/stop conn)
-    (is (nil? (redis/execute conn [:get "test.some.key"])))) ; true
+  (is (= 0 (redis/execute conn [:exists "test.some.key"]))) ; true
+  (is (= "OK" (redis/execute conn [:set "test.some.key" "foo"]))) ; true
+  (is (= 1 (redis/execute conn [:exists "test.some.key"]))) ; true
+  (is (= "foo" (redis/execute conn [:get "test.some.key"]))) ; true
+  (is (= 1 (redis/execute conn [:del "test.some.key"]))) ; true
+  (component/stop conn)
+  (is (nil? (redis/execute conn [:get "test.some.key"])))) ; true
 
 ;; pipeline execution
 (is (= [nil "OK" "oh ok" 1]
@@ -68,23 +96,46 @@ See example below
 
 ;; caching example
 (let [fetch! (fn []
-               (redis/cache-get-or-fetch conn {:fetch (fn [] (slurp "http://example.com"))
-                                               :cache-set (fn [conn fetch-res]
-                                                            (redis/execute conn [:setex "example" 10 fetch-res]))
-                                               :cache-get (fn [conn]
-                                                            (redis/exeucte conn [:get "example"]))}))]
+               (cache/get-or-fetch conn {:fetch (fn [] (slurp "http://example.com"))
+                                         :cache-set (fn [conn fetch-res]
+                                                      (redis/execute conn [:setex "example" 10 fetch-res]))
+                                         :cache-get (fn [conn]
+                                                      (redis/exeucte conn [:get "example"]))}))]
 
   (fetch!) ;; => returns contents of http://example.com as a result of direct call
   (fetch!) ;; => pulls from cache
   (fetch!) ;; => pulls from cache
   (Thread/sleep (* 10 1000))
   (fetch!)) ;; => makes http request again
+
+;; Convinence function for memoization:
+
+;; memoize-replacement - DATA WILL STICK AROUND UNLESS SOMETHING ELSE DELETES THE KEY
+(cache/memoize conn  {:key "example.com"
+                      :fetch-fn #(slurp "http://example.com")})
+
+
+;; memoize with expiry
+(cache/memoize conn  {:key "example.com"
+                      :fetch-fn #(slurp "http://example.com")
+                      :expiry-s 30})
+
+
+
+
+
 ```
 
 
 
 
 ## Change log
+
+- 2.1.0 - **Unreleased**, **Breaking changes**
+  - internals updates, better separation of namespaces
+  - support for auto key prefixing
+  - better cache helpers
+  - dependency updates
 
 - 2.0.0 - **Breaking changes**:
   - takes over from the original repo, with a new Maven coordinate

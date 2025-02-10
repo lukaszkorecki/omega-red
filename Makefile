@@ -1,11 +1,17 @@
 # Assumes shared configs and secrets!
 
 fmt:
-	cljstyle fix .
+	clojure-lsp format
 
 lint:
-	clj-kondo --lint .
+	clojure-lsp diagnostics
+
+prep-resources:
+	lein run -m omega-red.gen-cmd-config
+
+test: prep-resources
+	lein test
 
 
-deploy:
+deploy: prep-resources
 	lein deploy clojars
