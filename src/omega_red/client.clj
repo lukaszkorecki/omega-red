@@ -4,8 +4,10 @@
   regular `wcar*` macro, recommended in Carmine docs."
   (:require
    [com.stuartsierra.component :as component]
-   [omega-red.redis :as redis]
-   [taoensso.carmine :as carmine]))
+   [omega-red.redis :as redis])
+
+  (:import
+   [redis.clients.jedis Jedis JedisPooled]))
 
 (defrecord Redis
   [;; inputs
@@ -18,28 +20,25 @@
   component/Lifecycle
   (start
     [this]
-    ;; XXX: bypass the 'squirreled away' conn pool and create our own instance
-    ;; https://github.com/ptaoussanis/carmine/issues/224
-    ;; NOTE: This will break most likely in Carmine v4?
     (if (:pool this)
       this
-      (let [pool (carmine/connection-pool {:test-on-borrow? true})]
+      (let [pool (JedisPooled. ^String (:uri spec))] ;; FIXME: handle all other options? Or just use URI for now?
         (assoc this :pool pool :key-prefix (:key-prefix options)))))
   (stop
     [this]
     (if-let [pool (:pool this)]
       (do
-        (java.io.Closeable/.close pool)
+        (JedisPooled/.close pool)
         (assoc this :pool nil :key-prefix nil))
       this))
   redis/IRedis
   (execute
     [this cmd+args]
-    (redis/execute! this
+    (redis/execute* (:pool this)
                     (redis/apply-key-prefixes {:key-prefix key-prefix} cmd+args)))
   (execute-pipeline
     [this cmds+args]
-    (redis/execute-pipeline! this
+    (redis/execute-pipeline* (:pool this)
                              (mapv #(redis/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
 
 (defn create

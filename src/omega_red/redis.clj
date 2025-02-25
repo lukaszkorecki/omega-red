@@ -4,7 +4,15 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [taoensso.carmine :as carmine]))
+   [clojure.string :as str]
+   [taoensso.carmine :as carmine])
+
+  (:import
+   [redis.clients.jedis Jedis UnifiedJedis ;; TODO <--- use this instead of JedisPooled or AbstractPipeline when dispatching
+    Response
+    AbstractPipeline JedisPooled Protocol$Command]))
+
+(set! *warn-on-reflection* true)
 
 (defprotocol IRedis
   (execute
@@ -16,16 +24,42 @@
 
 ;; Command execution
 
-(defn execute!
-  "Executes a single Redis command as vector of command and arguments.:
-  (execute! conn [:ping])
-  (execute! conn [:set \"foo\" \"bar\"])"
-  [conn cmd+args]
-  {:pre [(seq cmd+args)]}
-  (carmine/wcar conn
-                (carmine/redis-call cmd+args)))
+(defn- cmd-kw->cmd* [cmd-kw]
+  (let [cmd-name (-> cmd-kw name str/upper-case)]
+    (Protocol$Command/valueOf cmd-name)))
 
-(defn execute-pipeline!
+(def ^:private cmd-kw->cmd
+  (memoize cmd-kw->cmd*))
+
+(defn cmd+args->command-with-args [[cmd & args]]
+  (let [proto-cmd (cmd-kw->cmd cmd)]
+    ;; FIXME: handle clojure data encoding!
+    ;; use https://github.com/clojure/data.fressian (rather than Nippy because we don't want Encore baggage...)
+    [proto-cmd (into-array String (mapv str args))]))
+
+(defn read-result [res]
+  (cond
+    (number? res) res
+    (bytes? res) (String. ^bytes res "UTF-8")
+    ;; XXX: should we protect against recursion here?
+    (instance? java.util.ArrayList res) (mapv read-result res)
+    :else (do
+            (r/pp {:r res :c (class res) :x (coll? res)})
+            res)))
+
+(defn execute*
+  "Executes a single Redis command as vector of command and arguments.:
+  (execute-raw! conn [:ping])
+  (execute-raw conn [:set \"foo\" \"bar\"])"
+  [^JedisPooled client cmd+args]
+  {:pre [(seq cmd+args)]}
+  (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)
+        result (JedisPooled/.sendCommand client
+                                         ^Protocol$Command proto-command
+                                         ^String/1 command-args)]
+    (read-result result)))
+
+(defn execute-pipeline*
   "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
 
   (execute-pipeline! conn [[:ping]
@@ -33,14 +67,23 @@
                            [:get \"foo\"]
                            [:del \"foo\"]])
   "
-  [conn cmds+args]
+  [^JedisPooled client cmds+args]
   {:pre [(seq cmds+args)
          (every? seq cmds+args)]}
-  (carmine/wcar conn
-                :as-pipeline
-                (apply carmine/redis-call cmds+args)))
+  (let [pipeline ^AbstractPipeline (.pipelined client)
+        responses (mapv (fn [cmd+args]
+                          (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
+                            (AbstractPipeline/.sendCommand pipeline
+                                                           ^Protocol$Command proto-command
+                                                           ^String/1 command-args)))
+                        cmds+args)]
+    (.sync pipeline)
+    (->> responses
+         (mapv Response/.get)
+         (mapv read-result))))
 
 ;; alias key to taoensso.carmine/key, but with docstring
+;; FIXME: use our own implementation!
 (def ^{:doc (:doc (meta (var taoensso.carmine/key)))}
   build-key
   taoensso.carmine/key)

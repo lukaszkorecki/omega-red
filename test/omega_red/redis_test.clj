@@ -109,8 +109,9 @@
     (is (= "OK" (redis/execute (:redis-prefixed @tu/sys) [:set "pref-key" "foo"])))
 
     (testing "keys used are actually prefixed"
+      ;; NOTE: this uses connection pool directly to bypass prefixing:
       (is (= ["test-prefix:pref-key"]
-             (redis/execute! (:redis-prefixed @tu/sys) [:keys "test-prefix*"]))))
+             (redis/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))
 
     (is (= 1 (redis/execute (:redis-prefixed @tu/sys) [:exists "pref-key"])))
 
@@ -122,4 +123,4 @@
 
     (testing "no data with prefix"
       (is (= []
-             (redis/execute! (:redis-prefixed @tu/sys) [:keys "test-prefix*"]))))))
+             (redis/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))))
