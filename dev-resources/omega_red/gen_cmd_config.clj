@@ -1,12 +1,9 @@
 (ns omega-red.gen-cmd-config
   (:require
    [cheshire.core :as json]
-   [clojure.string :as str]
-   [clojure.java.io :as io]
-   [taoensso.carmine :as carmine]))
+   [clojure.string :as str]))
 
-(def raw-redis-cmds (-> "redis-commands.json" ;; is bundled with Carmine!
-                        io/resource
+(def raw-redis-cmds (-> "https://raw.githubusercontent.com/taoensso/carmine/refs/heads/master/resources/redis-commands.json"
                         slurp
                         (json/parse-string false)
                         (update-keys #(-> % str/lower-case (str/replace " " "-") keyword))))

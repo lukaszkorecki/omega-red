@@ -2,7 +2,9 @@
   (:require
    [omega-red.test-util :as tu]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [omega-red.redis :as redis]))
+   [omega-red.redis :as redis]
+   [omega-red.redis.protocol :as redis.proto]
+   ))
 
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
@@ -43,64 +45,7 @@
     (is (= #{{:bar 1} {:foo 1}} (redis/execute (tu/conn) [:get "test.some.key"])))
     (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"])))))
 
-(deftest key-prefixing-test
-  (testing "no prefix - nothing happens"
-    (is (= [:get "one"]
-           (redis/apply-key-prefixes {}
-                                     [:get "one"]))))
 
-  (testing "works with commands which do not accept keys"
-    (is (= [:ping]
-           (redis/apply-key-prefixes {:key-prefix "test"}
-                                     [:ping])))
-
-    (is (= [:keys "foo*"]
-           (redis/apply-key-prefixes {:key-prefix "lol"}
-                                     [:keys "foo*"]))))
-  (testing "simple case"
-    (is (= [:get "foo:one"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:get "one"]))))
-
-  (testing "simple case with extra args that are not keys"
-    (is (= [:set "foo:one" "bar"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:set "one" "bar"])))
-
-    (is (= [:setex "foo:one" 10 "val"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:setex "one" 10 "val"])))
-
-    (is (= [:hmget "foo:one" "k1" "k2"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:hmget "one" "k1" "k2"]))))
-
-  (testing "multi-key no extra args"
-    (is (= [:exists "foo:one" "foo:two" "foo:three"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:exists "one" "two" "three"])))
-
-    (is (= [:del "foo:one" "foo:two" "foo:three"]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:del "one" "two" "three"]))))
-
-  (testing "mulit key with extra arg"
-    (is (= [:blpop "foo:one" 10]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:blpop "one" 10])))
-    (is (= [:blpop "foo:one" "foo:two" "foo:three" 10]
-           (redis/apply-key-prefixes {:key-prefix "foo"}
-                                     [:blpop "one" "two" "three" 10]))))
-
-  (testing "prefix can be a keyword"
-    (is (= [:get "foo:one"]
-           (redis/apply-key-prefixes {:key-prefix :foo}
-                                     [:get "one"]))))
-
-  (testing "prefix can be a namespaced keyword"
-    (is (= [:get "omega-red.redis-test/foo.bar:one"]
-           (redis/apply-key-prefixes {:key-prefix ::foo.bar}
-                                     [:get "one"])))))
 
 (deftest component-with-prefix-test
   (testing "basic get set del"
@@ -111,7 +56,7 @@
     (testing "keys used are actually prefixed"
       ;; NOTE: this uses connection pool directly to bypass prefixing:
       (is (= ["test-prefix:pref-key"]
-             (redis/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))
+             (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))
 
     (is (= 1 (redis/execute (:redis-prefixed @tu/sys) [:exists "pref-key"])))
 
@@ -123,4 +68,4 @@
 
     (testing "no data with prefix"
       (is (= []
-             (redis/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))))
+             (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))))

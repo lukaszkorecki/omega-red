@@ -4,7 +4,8 @@
   regular `wcar*` macro, recommended in Carmine docs."
   (:require
    [com.stuartsierra.component :as component]
-   [omega-red.redis :as redis])
+   [omega-red.redis :as redis]
+   [omega-red.redis.protocol :as redis.proto])
 
   (:import
    [redis.clients.jedis Jedis JedisPooled]))
@@ -34,12 +35,12 @@
   redis/IRedis
   (execute
     [this cmd+args]
-    (redis/execute* (:pool this)
-                    (redis/apply-key-prefixes {:key-prefix key-prefix} cmd+args)))
+    (redis.proto/execute* (:pool this)
+                          (redis.proto/apply-key-prefixes {:key-prefix key-prefix} cmd+args)))
   (execute-pipeline
     [this cmds+args]
-    (redis/execute-pipeline* (:pool this)
-                             (mapv #(redis/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
+    (redis.proto/execute-pipeline* (:pool this)
+                                   (mapv #(redis.proto/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
 
 (defn create
   "Creates a Redis connection component.
