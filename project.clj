@@ -12,13 +12,14 @@
 
   :dependencies [[org.clojure/clojure "1.12.0"]
                  [com.stuartsierra/component "1.1.0"]
-                 [com.taoensso/carmine "3.4.1"]
 
-                 [redis.clients/jedis "5.2.0"]]
+                 [redis.clients/jedis "5.2.0"]
+                 ;; clojure data serialization
+                 [org.clojure/data.fressian "1.1.0"]]
 
   :global-vars {*warn-on-reflection* true}
 
   :profiles {:dev {:dependencies [[org.clojure/tools.logging "1.3.0"]
-                                  [ch.qos.logback/logback-classic "1.5.15"]
+                                  [ch.qos.logback/logback-classic "1.5.17"]
                                   [cheshire "5.13.0"]]
                    :extra-paths ["dev-resources" "script"]}})
