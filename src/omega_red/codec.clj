@@ -1,6 +1,13 @@
 (ns omega-red.codec
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [clojure.data.fressian :as fress]))
+
+(defn serialize-clj [thing]
+  (fress/write thing))
+
+(defn unserialize-clj [thing]
+  (fress/read thing))
 
 (defn serialize-args [args]
   (mapv str args))

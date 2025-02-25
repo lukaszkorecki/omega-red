@@ -40,18 +40,20 @@
   (execute-pipeline
     [this cmds+args]
     (redis.proto/execute-pipeline* (:pool this)
-                                   (mapv #(redis.proto/apply-key-prefixes {:key-prefix key-prefix} %) cmds+args))))
+                                   (mapv #(redis.proto/apply-key-prefixes {:key-prefix key-prefix} %)
+                                         cmds+args))))
 
 (defn create
   "Creates a Redis connection component.
   Args:
-  - `conn-spec` - a map, same  as `:spec` key of map that `carmine/wcar` macro accepts
+  - `conn-spec` - a map, with `:uri` key, the URI of the Redis server
   - `options` - optional, a map of:
      - `:key-prefix` - a prefix for all keys, usually a service name - can be a string or keyword"
   ([conn-spec]
    (create conn-spec {}))
   ([conn-spec options]
-   {:pre [(or (string? (:key-prefix options))
+   {:pre [(:uri conn-spec)
+          (or (string? (:key-prefix options))
               (keyword? (:key-prefix options))
               (nil? (:key-prefix options)))]}
    (map->Redis {:spec conn-spec :options options})))

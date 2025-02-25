@@ -78,7 +78,8 @@
   NOTE: in most cases, the key is the first argument, followed by
   multiple keys with no extra arguments, and finally in very few cases
   a list of keys + optional arg is accepted. This fn applies prefixes to the keys only.
-  "
+
+  NOTE: we have this here rather than in `codec` namespace since it deals with Redis' protocol/commands"
   [{:keys [key-prefix]} cmd+args]
   (if-let [cmd-key-conf (get redis-cmd-config (first cmd+args))]
     (let [{:keys [non-key-args-tail-count type]} cmd-key-conf]
