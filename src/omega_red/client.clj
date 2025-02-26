@@ -10,28 +10,30 @@
   (:import
    [redis.clients.jedis JedisPooled]))
 
-(defrecord Redis
-  [;; inputs
-   spec
-   options
+(defrecord Redis [;; inputs
+                  uri
+                  key-prefix
 
-   ;; derived state
-   key-prefix
-   pool]
+                  ;; derived state
+                  pool]
   component/Lifecycle
   (start
     [this]
     (if (:pool this)
       this
-      (let [pool (JedisPooled. ^String (:uri spec))] ;; FIXME: handle all other options? Or just use URI for now?
-        (assoc this :pool pool :key-prefix (:key-prefix options)))))
+      (let [;; FIXME: handle all other options? Or just use URI for now?
+            ;; TODO: add support for connection pool configuration - see:
+            ;; https://www.site24x7.com/blog/jedis-pool-optimization
+            pool (JedisPooled. ^String uri)]
+        (assoc this :pool pool))))
   (stop
     [this]
     (if-let [pool (:pool this)]
       (do
         (JedisPooled/.close pool)
-        (assoc this :pool nil :key-prefix nil))
+        (assoc this :pool nil))
       this))
+
   redis/IRedis
   (execute
     [this cmd+args]
@@ -46,14 +48,11 @@
 (defn create
   "Creates a Redis connection component.
   Args:
-  - `conn-spec` - a map, with `:uri` key, the URI of the Redis server
-  - `options` - optional, a map of:
-     - `:key-prefix` - a prefix for all keys, usually a service name - can be a string or keyword"
-  ([conn-spec]
-   (create conn-spec {}))
-  ([conn-spec options]
-   {:pre [(:uri conn-spec)
-          (or (string? (:key-prefix options))
-              (keyword? (:key-prefix options))
-              (nil? (:key-prefix options)))]}
-   (map->Redis {:spec conn-spec :options options})))
+  - `:uri` - the URI string of the Redis server, required
+  - `:key-prefix` - optional, a prefix for all keys, usually a service name - can be a string or keyword"
+  [{:keys [uri key-prefix] :as opts}]
+  {:pre [uri
+         (or (string? key-prefix)
+             (keyword? key-prefix)
+             (nil? key-prefix))]}
+  (map->Redis opts))

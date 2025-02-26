@@ -6,32 +6,67 @@
 
 <img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" heighth="400px" align=right >
 
-## A Redis component
+## A Redis client for Clojure with flexible API
 
-
-Wraps [Carmine](https://github.com/ptaoussanis/carmine) for better dev ergonomics.
 
 > [!NOTE]
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
 > The original repo is still available for reference.
 
-### Why wrap?
+### What's inside?
 
-- provides proper connection pool management, rather than using default memoized pool
+- wraps Jedis Redis client with a more Clojure-friendly API
+- provides proper connection pool management
 - data-driven API for Redis commands
-- *technically* makes it possible to swap underlying Redis client (Carmine) for something else, if needed while keeping the API the same
-
+- supports Component out of the box, but is not tied to it (see below)
 
 #### Design
 
-The idea is that the component wraps the conection, and you pass "raw" Redis commands, like in the Redis shell or CLI, rather than invoking Carmine command functions + their arguments. The way it works is that  we convert the first keyword (command) to a Carmine function, cache it and then invoke it. The lookup/conversion is cached for later so that we don't pay the cost of the lookup too often.
+The idea is that the component wraps the conection, and you pass "raw" Redis commands, like in the Redis shell or CLI, rather than invoking specific methods on `UnifiedJedis` interface, representing various Redis commands. This is possible by calling `sendCommand` method rather than dynamiclly dispatching to methods.
 
-If you want to mock the component - you'll need something that implements the following protocol (defined as  `omega-red.protocol.Redis`):
+If you want to mock the component - you'll need something that implements the following protocol (defined in `omega-red.redis.IRedis`):
 
 - `(execute this [:command + args])` - for  single commands
 - `(exececute-pipeline this [ [:command1 + args] [:command2 + args]...])` - for pipeline operations
 
 and fakes Redis behavior as needed.
+
+
+#### Usage
+
+
+To create a client Component, call `omega-red.client/create` with a map of arguments, the following keys are accepted:
+
+- `:uri` - full Redis connection URI
+- `:key-prefix` - optional, a string or keywor to prefix all keys used in write & read commands issued by this client (see below)
+
+- **TODO** connection pool settings
+
+
+Once the component is created and started, you can call `omega-red.redis/execute` with the component and a vector of Redis commands, like so:
+
+```clojure
+(ns omega-red.redis-test
+  (:require [omega-red.redis :as redis]
+            [omega-red.client :as redis.client]
+            [com.stuartsierra.component :as component]))
+
+
+(defn some-ring-handler [{:keys [component uri]}]
+  (let [from-cache (redis/execute (:redis component) [:get "very-important-data"])]
+      {:status 200
+       :headers {"Content-Type" "text/plain"}
+       :body from-cache}))
+
+ ```
+
+ This is of course a very simple example, but it shows the basic example. Omega Red will transparently handle connection pooling and lifecycle of the connection, as
+ well as ensuring that Clojure data structures are correctly serialized and deserialized.
+
+ > [!NOTE]
+ > Only basic Clojure datastructures are supported - strings, numbers, lists, vectors, maps and sets. If you need to store more complex data,
+ > you'll need to serialize it yourself, as Redis only supports strings as values.
+
 
 ##### Key prefixes
 
@@ -47,11 +82,13 @@ are keys and will prefix them automatically for you. Auto-prefixing is enabled b
 
 
 
-(def srv1-client (redis.client/redis-client {:host "localhost" :port 6379}
-                                            {:key-prefix "srv1"}))
+(def srv1-client (component/start
+                  (redis.client/redis-client {:uri "redis://localhost:6379"
+                                              :key-prefix "srv1"})))
 
-(def srv2-client (redis.client/redis-client {:host "localhost" :port 6379}
-                                            {:key-prefix ::srv2}))
+(def srv2-client (component/start
+                  (redis.client/redis-client {:uri "redis://localhost:6379"
+                                              :key-prefix ::srv2})))
 
 
 (redis/execute srv1-client [:set "foo" "1"]) ;; => "OK", would set key "srv1:foo"
@@ -67,7 +104,7 @@ Omega Red also supports a very simple "fetch from cache or populate on miss" wor
 See example below
 
 
-# Example
+###### Example
 
 ```clojure
 (ns omega-red.redis-test
@@ -76,26 +113,9 @@ See example below
             [omega-red.client :as redis.client]
             [com.stuartsierra.component :as component]))
 
-(let [conn (componet/start (redis.client/create {:host "127.0.0.1" :port 6379}))]
-  (is (= 0 (redis/execute conn [:exists "test.some.key"]))) ; true
-  (is (= "OK" (redis/execute conn [:set "test.some.key" "foo"]))) ; true
-  (is (= 1 (redis/execute conn [:exists "test.some.key"]))) ; true
-  (is (= "foo" (redis/execute conn [:get "test.some.key"]))) ; true
-  (is (= 1 (redis/execute conn [:del "test.some.key"]))) ; true
-  (component/stop conn)
-  (is (nil? (redis/execute conn [:get "test.some.key"])))) ; true
-
-;; pipeline execution
-(is (= [nil "OK" "oh ok" 1]
-       (redis/execute-pipeline conn
-                               [[:get "test.some.key.pipe"]
-                                [:set "test.some.key.pipe" "oh ok"]
-                                [:get "test.some.key.pipe"]
-                                [:del "test.some.key.pipe"]]))) ; true
-
-
-;; caching example
-(let [fetch! (fn []
+(let [conn (componet/start (redis.client/create {:uri "127.0.0.1:6379"}))
+      ;; caching example
+      fetch! (fn []
                (cache/get-or-fetch conn {:fetch (fn [] (slurp "http://example.com"))
                                          :cache-set (fn [conn fetch-res]
                                                       (redis/execute conn [:setex "example" 10 fetch-res]))
@@ -106,27 +126,37 @@ See example below
   (fetch!) ;; => pulls from cache
   (fetch!) ;; => pulls from cache
   (Thread/sleep (* 10 1000))
-  (fetch!)) ;; => makes http request again
+  (fetch!) ;; => makes http request again
 
-;; Convinence function for memoization:
+  ;; Convinence function for memoization:
 
-;; memoize-replacement - DATA WILL STICK AROUND UNLESS SOMETHING ELSE DELETES THE KEY
-(cache/memoize conn  {:key "example.com"
-                      :fetch-fn #(slurp "http://example.com")})
-
-
-;; memoize with expiry
-(cache/memoize conn  {:key "example.com"
-                      :fetch-fn #(slurp "http://example.com")
-                      :expiry-s 30})
+  ;; memoize-replacement - DATA WILL STICK AROUND UNLESS SOMETHING ELSE DELETES THE KEY
+  (cache/memoize conn  {:key "example.com"
+                        :fetch-fn #(slurp "http://example.com")})
 
 
-
-
-
+  ;; memoize with expiry
+  (cache/memoize conn  {:key "example.com"
+                        :fetch-fn #(slurp "http://example.com")
+                        :expiry-s 30}))
 ```
 
 
+###### Usage without Component
+
+If you don't want to use Component, you can use Omega Red without it. Just create a client and pass an instance of `Jedis` or `JedisPooled` class under `:pool` key:
+
+```clojure
+(import (java.clients.jedis Jedis))
+
+
+(def client (omega-red.client/create {:uri "<ignore me>"}))
+
+
+(with-open [jedis (Jedis. "redis://localhost:6379")]
+  (omega-red.redis/execute {:pool jedis} [:set "foo" "bar"])
+  (omega-red.redis/execute {:pool jedis} [:get "foo"]))
+```
 
 
 ## Change log
@@ -136,6 +166,7 @@ See example below
   - support for auto key prefixing
   - better cache helpers
   - dependency updates
+  - migrates off Carmine to Jedis
 
 - 2.0.0 - **Breaking changes**:
   - takes over from the original repo, with a new Maven coordinate
@@ -152,10 +183,10 @@ See example below
 # Roadmap
 
 - [x] explicit connection pool component with its own lifecycle
-- [ ] *maybe* move off Carmine and use Jedis or Lettuce directly (because of the point above)
+- [x] *maybe* move off Carmine and use Jedis or Lettuce directly (because of the point above)
 
 
-# Authors
+# Original Authors
 
 <sup>In alphabetical order</sup>
 

@@ -22,7 +22,7 @@
   (try
     (reset! sys (component/start (component/map->SystemMap
                                   {:redis (redis.client/create redis-config)
-                                   :redis-prefixed (redis.client/create redis-config {:key-prefix "test-prefix"})})))
+                                   :redis-prefixed (redis.client/create (assoc redis-config :key-prefix "test-prefix"))})))
 
     (test)
 

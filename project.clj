@@ -1,5 +1,5 @@
 (defproject org.clojars.lukaszkorecki/omega-red "2.1.0-SNAPSHOT"
-  :description "Component firendly Redis client, based on Carmine"
+  :description "Clojure & Component firendly Redis client, based on Jedis"
   :url "https://github.com/nomnom-insights/nomnom.omega-red"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"
