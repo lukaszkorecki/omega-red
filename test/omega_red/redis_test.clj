@@ -29,6 +29,17 @@
     (testing "once pipeline finishes value is unchanged"
       (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
 
+(deftest sets-test
+  (testing "we can work with sets"
+    (is (= 3
+           (redis/execute (tu/conn) [:sadd "test.some.set" :x :y :z :x])))
+
+    (is (= 3
+           (redis/execute (tu/conn) [:scard "test.some.set"])))
+
+    (is (= #{:x :y :z}
+           (set (redis/execute (tu/conn) [:spop "test.some.set" 3]))))))
+
 (deftest clj-data-test
   (testing "get set del with a clojure map"
     (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key"])))
