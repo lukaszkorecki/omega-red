@@ -1,6 +1,8 @@
 (ns omega-red.redis
   "Protocol for redis dispatch, and utilities for working with Redis, caching being the core use case"
-  (:refer-clojure :exclude [key]))
+  (:refer-clojure :exclude [key])
+  (:require
+   [omega-red.codec :as codec]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,7 +16,14 @@
 
 ;; Command execution
 
+(defn key
+  "Simplifies working with keys that need to be progrmatically built.
+  e.g. rather than doing `(str some-thing \":\" some-id)` you can do
+  (key some-thing some-id)"
+  [& args]
+  (codec/serialize-key args))
+
 (defn redis-client?
-  "Can we use `thing` as a redis client?"
+  "Can we use potentially `thing` as a redis client?"
   [thing]
   (satisfies? IRedis thing))

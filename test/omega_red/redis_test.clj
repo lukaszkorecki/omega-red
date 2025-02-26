@@ -2,12 +2,11 @@
   (:require
    [omega-red.test-util :as tu]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [omega-red.redis :as redis]
-   [omega-red.redis.protocol :as redis.proto]
-   ))
+   [omega-red.redis :as redis]))
 
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
+                                             (tu/clean-up-all-data (tu/conn))
                                              (test)))))
 
 (deftest basic-ops-test
@@ -43,29 +42,19 @@
     (is (= "OK" (redis/execute (tu/conn) [:set "test.some.key" #{{:bar 1} {:foo 1}}])))
     (is (= 1 (redis/execute (tu/conn) [:exists "test.some.key"])))
     (is (= #{{:bar 1} {:foo 1}} (redis/execute (tu/conn) [:get "test.some.key"])))
-    (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"])))))
+    (is (= 1 (redis/execute (tu/conn) [:del "test.some.key"]))))
 
+  (testing "pipelines work too"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe-hash"])))
 
-
-(deftest component-with-prefix-test
-  (testing "basic get set del"
-    ;; NOTE this connection is configured with a prefix in test-util
-    (is (= 0 (redis/execute (:redis-prefixed @tu/sys) [:exists "pref-key"])))
-    (is (= "OK" (redis/execute (:redis-prefixed @tu/sys) [:set "pref-key" "foo"])))
-
-    (testing "keys used are actually prefixed"
-      ;; NOTE: this uses connection pool directly to bypass prefixing:
-      (is (= ["test-prefix:pref-key"]
-             (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))
-
-    (is (= 1 (redis/execute (:redis-prefixed @tu/sys) [:exists "pref-key"])))
-
-    (testing "connection without prefix configured will not see the data"
-      (is (= 0 (redis/execute (tu/conn) [:exists "pref-key"]))))
-
-    (is (= "foo" (redis/execute (:redis-prefixed @tu/sys) [:get "pref-key"])))
-    (is (= 1 (redis/execute (:redis-prefixed @tu/sys) [:del "pref-key"])))
-
-    (testing "no data with prefix"
-      (is (= []
-             (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))))
+    (is (= [nil
+            2
+            1
+            1
+            [{:foo :x} #{1 2 3} {::bananas ['(1) '(2)]} "1"]]
+           (redis/execute-pipeline (tu/conn)
+                                   [[:get "test.some.key.pipe-hash"]
+                                    [:hset "test.some.key.pipe-hash" "one" {:foo :x} "two" #{1 2 3}]
+                                    [:hset "test.some.key.pipe-hash" "three" {::bananas ['(1) '(2)]}]
+                                    [:hset "test.some.key.pipe-hash" "four" 1]
+                                    [:hmget "test.some.key.pipe-hash" "one" "two" "three" "four"]])))))

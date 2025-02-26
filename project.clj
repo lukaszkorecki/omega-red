@@ -14,8 +14,8 @@
                  [com.stuartsierra/component "1.1.0"]
 
                  [redis.clients/jedis "5.2.0"]
-                 ;; clojure data serialization
-                 [org.clojure/data.fressian "1.1.0"]]
+                 ;; for (de)serializing Clojure data transparently
+                 [com.cognitect/transit-clj "1.0.333"]]
 
   :global-vars {*warn-on-reflection* true}
 

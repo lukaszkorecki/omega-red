@@ -1,14 +1,14 @@
+;; XXX: rename to omega-red.connection? merge into omega-red.redis?
+
 (ns omega-red.client
-  "Represents a redis connection spec,
-  so we can use it when using Carmine, unlike the
-  regular `wcar*` macro, recommended in Carmine docs."
+  "Represents a Redis client that can be used to execute commands."
   (:require
    [com.stuartsierra.component :as component]
    [omega-red.redis :as redis]
    [omega-red.redis.protocol :as redis.proto])
 
   (:import
-   [redis.clients.jedis Jedis JedisPooled]))
+   [redis.clients.jedis JedisPooled]))
 
 (defrecord Redis
   [;; inputs

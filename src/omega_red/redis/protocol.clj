@@ -23,7 +23,7 @@
   (let [proto-cmd (cmd-kw->cmd cmd)]
     ;; FIXME: handle clojure data encoding!
     ;; use https://github.com/clojure/data.fressian (rather than Nippy because we don't want Encore baggage...)
-    [proto-cmd (into-array String (codec/serialize-args args))]))
+    [proto-cmd (into-array String (mapv codec/serialize args))]))
 
 (defn execute*
   "Executes a single Redis command as vector of command and arguments.:
@@ -35,7 +35,7 @@
         result (JedisPooled/.sendCommand client
                                          ^Protocol$Command proto-command
                                          ^String/1 command-args)]
-    (codec/deserialize-result result)))
+    (codec/deserialize result)))
 
 (defn execute-pipeline*
   "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
@@ -58,7 +58,7 @@
     (.sync pipeline)
     (->> responses
          (mapv Response/.get)
-         (mapv codec/deserialize-result))))
+         (mapv codec/deserialize))))
 
 ;; See 'script' in dev-resources/omega_red/gen_cmd_config.clj for the code which generates this
 ;; The config is a map of:
@@ -71,6 +71,12 @@
       slurp
       edn/read-string))
 
+(defn- with-prefix [key-prefix]
+  (fn with-prefix'
+    [a-key]
+    (codec/serialize-key [key-prefix a-key])))
+
+;; XXX: perhaps this could be all-in-one: key prefixing +  arg-preparation operation?
 (defn apply-key-prefixes
   "Applies key prefix to the command and its arguments.
   It detects if given command accepts a key or a variadic number of keys
@@ -84,19 +90,19 @@
   (if-let [cmd-key-conf (get redis-cmd-config (first cmd+args))]
     (let [{:keys [non-key-args-tail-count type]} cmd-key-conf]
       (cond
-        ;; easy - 1st arg is key
-        (= :single type) (update-in cmd+args [1] #(codec/serialize-key key-prefix %))
+        ;; easy - 1st arg is key - this is the majority scenario
+        (= :single type) (update-in cmd+args [1] (with-prefix key-prefix) #_#(codec/serialize-key [key-prefix %]))
 
         ;; a bit more complex - all args are keys
         (and (= :multi type) (zero? non-key-args-tail-count))
-        (vec (concat [(first cmd+args)] (map #(codec/serialize-key key-prefix %) (rest cmd+args))))
+        (vec (concat [(first cmd+args)] (mapv (with-prefix key-prefix) (rest cmd+args))))
 
         ;; worst case scenario
         (and (= :multi type) (pos? non-key-args-tail-count))
         (let [[cmd & args] cmd+args]
           (vec
            (concat [cmd]
-                   (map #(codec/serialize-key key-prefix %) (drop-last non-key-args-tail-count args))
+                   (mapv (with-prefix key-prefix) (drop-last non-key-args-tail-count args))
                    (drop (- (count args) non-key-args-tail-count) args))))
         :else
         (throw (ex-info "not sure how to deal with this" {:cmd+args cmd+args}))))
