@@ -47,7 +47,7 @@
   "
   [^JedisPooled client cmds+args]
   {:pre [(seq cmds+args)
-         (every? seq cmds+args)]}
+         (every? keyword? (map first cmds+args))]}
   (let [pipeline ^AbstractPipeline (.pipelined client)
         responses (mapv (fn [cmd+args]
                           (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
