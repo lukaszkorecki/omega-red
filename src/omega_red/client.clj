@@ -28,7 +28,6 @@
                                                  ;; TODO: add support for connection pool configuration - see:
                                                  ;; https://www.site24x7.com/blog/jedis-pool-optimization
                                                  pool (JedisPooled. ^String uri)]
-
                                              (assoc this :pool pool :connected? (if ping-on-start?
                                                                                   (= "PONG" (redis.proto/execute* pool [:ping]))
                                                                                   ::unkown)))))
