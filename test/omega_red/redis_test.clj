@@ -69,3 +69,11 @@
                                     [:hset "test.some.key.pipe-hash" "three" {::bananas ['(1) '(2)]}]
                                     [:hset "test.some.key.pipe-hash" "four" 1]
                                     [:hmget "test.some.key.pipe-hash" "one" "two" "three" "four"]])))))
+
+(deftest inspecting-test
+  (is (= {:connected? :omega-red.client/unkown
+          :instance-addr "127.0.0.1:6379"}
+         (dissoc (tu/conn) :pool)))
+
+  ;; NOTE: this doesn't work for some reason
+  #_(is (satisfies? omega-red.redis/IRedis (tu/conn))))

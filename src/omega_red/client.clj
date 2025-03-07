@@ -1,12 +1,12 @@
-;; XXX: rename to omega-red.connection? merge into omega-red.redis?
-
 (ns omega-red.client
   "Represents a Redis client that can be used to execute commands."
   (:require
    [omega-red.redis]
    [omega-red.redis.protocol :as redis.proto])
   (:import
-   [redis.clients.jedis JedisPooled]))
+   [redis.clients.jedis JedisPooled]
+   [redis.clients.jedis.util JedisURIHelper]
+   [java.net URI]))
 
 (defn create
   "Creates a Redis connection component.
@@ -20,17 +20,25 @@
          (or (string? key-prefix)
              (keyword? key-prefix)
              (nil? key-prefix))]}
-  (with-meta opts
+  (with-meta (assoc opts :connected? false)
     {'com.stuartsierra.component/start (fn start' [this]
                                          (if (:pool this)
                                            this
-                                           (let [;; FIXME: handle all other options? Or just use URI for now?
+                                           (let [jedis-uri (URI. ^String uri)
+                                                 _ (when-not (JedisURIHelper/isValid jedis-uri)
+                                                     (throw (ex-info "invalid connection uri" {:uri uri})))
+
                                                  ;; TODO: add support for connection pool configuration - see:
                                                  ;; https://www.site24x7.com/blog/jedis-pool-optimization
-                                                 pool (JedisPooled. ^String uri)]
-                                             (assoc this :pool pool :connected? (if ping-on-start?
-                                                                                  (= "PONG" (redis.proto/execute* pool [:ping]))
-                                                                                  ::unkown)))))
+                                                 pool (JedisPooled. jedis-uri #_^String uri)
+                                                 connected? (if ping-on-start?
+                                                              (= "PONG" (redis.proto/execute* pool [:ping]))
+                                                              ::unkown)]
+                                             (-> this
+                                                 (dissoc :uri)
+                                                 (assoc :pool pool
+                                                        :connected? connected?
+                                                        :instance-addr (URI/.getAuthority jedis-uri))))))
      'com.stuartsierra.component/stop (fn stop' [this]
                                         (if-let [pool (:pool this)]
                                           (do
@@ -44,7 +52,4 @@
      'omega-red.redis/execute-pipeline (fn execute-pipeline' [this cmds+args]
                                          (redis.proto/execute-pipeline* (:pool this)
                                                                         (mapv #(redis.proto/apply-key-prefixes this %)
-                                                                              cmds+args)))
-
-     'omega-red.redis/inspect (fn inspect' [this]
-                                (dissoc this :pool))}))
+                                                                              cmds+args)))}))
