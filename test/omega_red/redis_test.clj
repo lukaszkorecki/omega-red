@@ -72,7 +72,7 @@
 
 (deftest inspecting-test
   (is (= {:connected? :omega-red.client/unkown
-          :instance-addr "127.0.0.1:6379"}
+          :instance-addr (-> tu/redis-config :instance-addr)}
          (dissoc (tu/conn) :pool)))
 
   ;; NOTE: this doesn't work for some reason

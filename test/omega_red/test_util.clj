@@ -7,7 +7,7 @@
 (def redis-config
   (let [host (or (System/getenv "REDIS_HOST") "127.0.0.1")
         port (Integer/parseInt (or (System/getenv "REDIS_PORT") "6379"))]
-    {:uri (str "redis://" host ":" port)}))
+    {:uri (str "redis://" host ":" port) :instance-addr (str host ":" port)}))
 
 (def sys (atom nil))
 
@@ -15,8 +15,7 @@
   (:redis @sys))
 
 (defn clean-up-all-data [conn]
-  (when-let [all-keys (seq (redis/execute conn [:keys "*"]))]
-    (redis/execute conn (concat [:del] all-keys))))
+  (redis/execute conn [:flushall]))
 
 (defn with-test-system [test]
   (try
