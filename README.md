@@ -13,10 +13,15 @@
 
 - Hiccup-style command API
 - Full Redis protocols support and connection pooling backed by Jedis
-- built-in Component suport (but optional)
+- built-in Component suport (but optional, see section below)
 - automatic key prefixing for shared Redis instances
 - transparent serialization/deserialization of Clojure data structures via Transit
 
+### Non Goals
+
+- no support for worker queue or pub/sub abstraction
+- no implementation of Redis commands as functions
+- no locking or other complex operations
 
 > [!NOTE]
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
@@ -134,7 +139,7 @@ by setting `:key-prefix` in options map when creating the component:
 
 Automatic key prefixing is 100% safe as internally the client builds a command parser based on Redis' own command specification.
 
-##### Cache helper
+##### Cache utils
 
 Omega Red provides helpers for common use cases, such as "return from cache on hit or fetch from data source and populate on miss" workflow.
 These helpers are provided by `omega-red.cache` namespace.
