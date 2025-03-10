@@ -13,7 +13,7 @@
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
                                              (reset! state 0)
-                                             (redis/execute (tu/conn) [:del "testing:1" "testing:2" "bananas"])
+                                             (tu/clean-up-all-data (tu/conn))
                                              (test)))))
 
 (deftest fetch-or-get-test
