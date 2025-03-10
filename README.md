@@ -6,7 +6,7 @@
 
 <img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" heighth="400px" align=right >
 
-## Idiomatic Clojure Redis client
+## Idiomatic Redis client for Clojure
 
 
 ### Features
@@ -14,14 +14,14 @@
 - Hiccup-style command API
 - Full Redis protocols support and connection pooling backed by Jedis
 - built-in Component suport (but optional, see section below)
-- automatic key prefixing for shared Redis instances
+- automatic key prefixing for data stored in shared Redis instances
 - transparent serialization/deserialization of Clojure data structures via Transit
 
 ### Non Goals
 
 - no support for worker queue or pub/sub abstraction
 - no implementation of Redis commands as functions
-- no locking or other complex operations
+- no locking or other complex operations built on top of Redis
 
 > [!NOTE]
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
@@ -33,8 +33,7 @@ Rather than implementing a function for each Redis command, Omega Red uses vecto
 
 
 ``` clojure
-[:command arg1 arg2 arg3 ...]
-
+[:command-as-keyword arg1 arg2 arg3 ...]
 ```
 
 To send these commands to Redis, use `omega-red.redis/execute` or `omega-red.redis/execute-pipeline` functions. The former is for single commands, the latter is for pipeline operations.
@@ -247,7 +246,7 @@ To work around this use strings instead:
 
 # Changelog
 
-- 2.2.0 - **Unreleased**
+- 2.2.0 - 2025/03/10
   - First stable release based on Jedis
 
 - 2.2.0-SNAPSHOT - 2025/02/26  **Breaking changes**
