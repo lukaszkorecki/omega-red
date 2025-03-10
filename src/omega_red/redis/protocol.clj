@@ -91,7 +91,7 @@
     (let [{:keys [non-key-args-tail-count type]} cmd-key-conf]
       (cond
         ;; easy - 1st arg is key - this is the majority scenario
-        (= :single type) (update-in cmd+args [1] (with-prefix key-prefix) #_#(codec/serialize-key [key-prefix %]))
+        (= :single type) (update-in cmd+args [1] (with-prefix key-prefix))
 
         ;; a bit more complex - all args are keys
         (and (= :multi type) (zero? non-key-args-tail-count))
