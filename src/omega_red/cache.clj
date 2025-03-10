@@ -21,7 +21,7 @@
   You need to ensure that resuls of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
   will cast 1 as string on read!"
   [conn {:keys [fetch cache-set cache-get]}]
-  {:pre [(redis/redis-client? conn)
+  {:pre [(redis/valid-client? conn)
          (fn? fetch)
          (fn? cache-set)
          (fn? cache-get)]}

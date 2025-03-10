@@ -7,12 +7,13 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol IRedis
+  :extend-via-metadata true
   (execute
     [this cmd+args]
     "Executes single redis command - passed as JDBC-style vector: [:command the rest of args]")
   (execute-pipeline
     [this cmds+args]
-    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args. Use omega-red.protocol/excute-pipeline to invoke!"))
+    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args"))
 
 ;; Command execution
 
@@ -23,7 +24,8 @@
   [& args]
   (codec/serialize-key args))
 
-(defn redis-client?
-  "Can we use potentially `thing` as a redis client?"
+(defn valid-client?
+  "Can we use `thing` as a Redis client?"
   [thing]
-  (satisfies? IRedis thing))
+  (when-let [pool (-> thing :pool)]
+    (instance? redis.clients.jedis.UnifiedJedis pool)))
