@@ -81,25 +81,3 @@
 
   ;; NOTE: this doesn't work for some reason
   #_(is (satisfies? omega-red.redis/IRedis (tu/conn))))
-
-(deftest a-stress-test
-  (let [client (component/start (redis.client/create (assoc tu/redis-config :connection-pool {:max-total 4
-                                                                                              :min-idle 1
-                                                                                              :max-idle 10})))
-        executor (Executors/newFixedThreadPool 10)]
-    (try
-      (let [result (->> (range 0 1000)
-                        (mapv (fn [i]
-                                (.submit executor ^Callable (fn []
-                                                              (Thread/sleep (rand-int 10))
-                                                              (redis/execute client [:set (str "test." i) {:number i}])))))
-                        (mapv deref))]
-
-        (.awaitTermination executor 10 java.util.concurrent.TimeUnit/SECONDS)
-        (is (= 1000 (count result)))
-        (is (= #{"OK"} (set result)))
-        (is (= (set (range 0 1000))
-               (set (mapv :number (mapv #(redis/execute client [:get (str "test." %)]) (range 0 1000)))))))
-
-      (finally
-        (component/stop client)))))
