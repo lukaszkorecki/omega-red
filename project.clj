@@ -18,9 +18,9 @@
 
   :global-vars {*warn-on-reflection* true}
 
-  :profiles {:dev {:dependencies [[org.clojure/tools.logging "1.3.0"]
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "2.0.9"]
+                                  [org.clojure/tools.logging "1.3.0"]
                                   [ch.qos.logback/logback-classic "1.5.17"]
                                   [com.stuartsierra/component "1.1.0"]
-
                                   [cheshire "5.13.0"]]
                    :extra-paths ["dev-resources" "script"]}})
