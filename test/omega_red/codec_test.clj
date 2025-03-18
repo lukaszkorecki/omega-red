@@ -17,7 +17,7 @@
            (-> ;; input to Jedis is always a string
             (codec/serialize #{:x})
                ;; this is because internally, Jedis always gives us byte arrays
-            (.getBytes "UTF-8")
+            (String/.getBytes "UTF-8")
             codec/deserialize))))
 
   (testing "simple data types - preserves Jedis/Redis return value semantics (aka losing type info)"

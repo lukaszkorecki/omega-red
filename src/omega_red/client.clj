@@ -1,12 +1,13 @@
 (ns omega-red.client
   "Represents a Redis client that can be used to execute commands."
   (:require
+   [omega-red.client.connection-pool :as client.connection-pool]
    [omega-red.redis]
    [omega-red.redis.protocol :as redis.proto])
   (:import
+   [java.net URI]
    [redis.clients.jedis JedisPooled]
-   [redis.clients.jedis.util JedisURIHelper]
-   [java.net URI]))
+   [redis.clients.jedis.util JedisURIHelper]))
 
 (defn create
   "Creates a Redis connection component.
@@ -15,7 +16,15 @@
   - `:key-prefix` - optional, a prefix for all keys, usually a service name - can be a string or keyword
   - `:ping-on-start?` - optional, when true will send a PING command to the server on start to check if it's alive
   "
-  [{:keys [uri key-prefix ping-on-start?] :as opts}]
+  [{:keys [uri client-name key-prefix ping-on-start? connection-pool]
+    :or {;; TODO: add support for client-name param
+         ping-on-start? false
+         connection-pool {:max-total 250
+                          :max-idle 250
+                          :min-idle 25
+                          :max-wait-millis 1000}}
+
+    :as opts}]
   {:pre [uri
          (or (string? key-prefix)
              (keyword? key-prefix)
@@ -28,9 +37,9 @@
                                                  _ (when-not (JedisURIHelper/isValid jedis-uri)
                                                      (throw (ex-info "invalid connection uri" {:uri uri})))
 
-                                                 ;; TODO: add support for connection pool configuration - see:
-                                                 ;; https://www.site24x7.com/blog/jedis-pool-optimization
-                                                 pool (JedisPooled. jedis-uri #_^String uri)
+                                                 pool-config (client.connection-pool/configure connection-pool)
+
+                                                 pool (JedisPooled. pool-config ^String uri)
                                                  connected? (if ping-on-start?
                                                               (= "PONG" (redis.proto/execute* pool [:ping]))
                                                               ::unkown)]
