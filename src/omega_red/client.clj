@@ -20,8 +20,8 @@
     :or {;; TODO: add support for client-name param
          ping-on-start? false
          connection-pool {:max-total 250
-                          :max-idle 250
-                          :min-idle 25
+                          :max-idle (int (/ 250 2))
+                          :min-idle (int (/ 250 10))
                           :max-wait-millis 1000}}
 
     :as opts}]

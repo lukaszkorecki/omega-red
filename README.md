@@ -63,6 +63,11 @@ To create a client Component, call `omega-red.client/create` with an arg map, th
 - `:uri` - full Redis connection URI
 - `:key-prefix` - optional, a string or keywor to prefix all keys used in write & read commands issued by this client (see below)
 - `:ping-on-start?` - optional, if set to `true`, the client will attempt to ping the Redis server on start
+- `:connection-pool` - configures connection pool settings, the keys and their default values are:
+   - `:max-total` - 250
+   - `:max-idle` - 50% of `max-total`
+   - `:min-idle` - 10% of `max-total`
+   - `:max-wait-millis` - 1000 (1s)
 
 
 Once the component is created and started, you can call `omega-red.redis/execute` with the component and a vector of Redis commands, like so:
