@@ -1,4 +1,4 @@
-(defproject org.clojars.lukaszkorecki/omega-red "2.2.0"
+(defproject org.clojars.lukaszkorecki/omega-red "2.3.0-SNAPSHOT"
   :description "Clojure & Component firendly Redis client, based on Jedis"
   :url "https://github.com/nomnom-insights/nomnom.omega-red"
   :license {:name "MIT License"
