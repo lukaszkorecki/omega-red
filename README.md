@@ -251,6 +251,12 @@ To work around this use strings instead:
 
 # Changelog
 
+- 2.3.0 - **unreleased**
+
+- 2.3.0-SNAPSHOT - **bugfix release**
+  - adds connection pool configuration options
+  - fix a bug in how command pipelines were executed
+
 - 2.2.0 - 2025/03/10
   - First stable release based on Jedis
 
