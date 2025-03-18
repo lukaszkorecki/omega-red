@@ -1,6 +1,6 @@
 (ns omega-red.test-util
   (:require
-   [mokujin.log :as log]
+   [clojure.tools.logging :as log]
    [omega-red.redis :as redis]
    [omega-red.client :as redis.client]
    [com.stuartsierra.component :as component]))
@@ -24,7 +24,7 @@
     (try
       (reset! sys (component/start (component/map->SystemMap sys-map)))
       (test)
-      (catch Exception e
+      (catch Throwable e
         (log/error e "Error in test setup"))
       (finally
         (component/stop @sys)))))

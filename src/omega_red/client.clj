@@ -13,17 +13,15 @@
   "Creates pooled connection
   - `:uri` - the URI string of the Redis server, required
   - `:connection-pool` - optional, a map of connection pool settings or instance of `JedisPoolConfig`. Options:
-    - `:max-total` - max total connections, defaults to 250
+    - `:max-total` - max total connections, defaults to 100
     - `:max-idle` - min total connections, defaults `max-total / 2`
     - `:min-idle` - min idle connections, defaults to 0 or `max-total / 10`
-    - `:max-wait-millis` - max wait time for a connection, defaults to 10000"
-  [{:keys [uri connection-pool]
-    :or {connection-pool {:max-total 250
-                          :max-wait-millis 10000}}}]
+    - `:max-wait-millis` - max wait time for a connection, defaults to -1 (block until available)"
+  [{:keys [uri connection-pool]}]
   (let [jedis-uri (URI. ^String uri)
         _ (when-not (JedisURIHelper/isValid jedis-uri)
             (throw (ex-info "invalid connection uri" {:uri uri})))
-        pool-config (client.connection-pool/configure connection-pool)]
+        pool-config (client.connection-pool/configure (or connection-pool {:max-total 100}))]
     (JedisPooled. ^JedisPoolConfig pool-config ^String uri)))
 
 (defn create

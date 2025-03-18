@@ -4,17 +4,19 @@
   (:import
    [redis.clients.jedis JedisPoolConfig]))
 
+(set! *warn-on-reflection* true)
+
 (defn- zero-or-more-int [x]
   (and (int? x) (>= x 0)))
 
 (s/def ::max-total nat-int?)
 (s/def ::max-idle nat-int?)
 (s/def ::min-idle zero-or-more-int)
-(s/def ::max-wait-millis nat-int?)
-(s/def ::config (s/keys :req-un [::max-total
-                                 ::max-wait-millis]
+(s/def ::max-wait-millis int?)
+(s/def ::config (s/keys :req-un [::max-total]
                         :opt-un [::max-idle
-                                 ::min-idle]))
+                                 ::min-idle
+                                 ::max-wait-millis]))
 
 (defn validate-config
   [config]
@@ -41,15 +43,16 @@
                                                                     validate-config
                                                                     calculate-defaults
                                                                     validate-config)
-          pool-config (JedisPoolConfig.)]
-      (doto pool-config
-        (.setMaxTotal max-total)
-        (.setMaxIdle max-idle)
-        (.setMinIdle min-idle)
-        (.setBlockWhenExhausted true)
-        (.setMaxWaitMillis max-wait-millis)
-        (.setTestOnBorrow false)
-        (.setMinEvictableIdleTimeMillis 60000)
-        (.setJmxEnabled false)
-        (.setTestOnReturn false)
-        (.setTestWhileIdle true)))))
+          pool-config ^JedisPoolConfig (doto (JedisPoolConfig.)
+                                         (.setMaxTotal max-total)
+                                         (.setMaxIdle max-idle)
+                                         (.setMinIdle min-idle)
+                                         (.setBlockWhenExhausted true)
+                                         (.setTestOnBorrow false)
+                                         (.setMinEvictableIdleTimeMillis 60000)
+                                         (.setJmxEnabled false)
+                                         (.setTestOnReturn false)
+                                         (.setTestWhileIdle true))]
+      (when max-wait-millis
+        (.setMaxWaitMillis pool-config max-wait-millis))
+      pool-config)))
