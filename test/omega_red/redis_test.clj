@@ -1,12 +1,8 @@
 (ns omega-red.redis-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [com.stuartsierra.component :as component]
-   [omega-red.client :as redis.client]
    [omega-red.redis :as redis]
-   [omega-red.test-util :as tu])
-  (:import
-   [java.util.concurrent Executors]))
+   [omega-red.test-util :as tu]))
 
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
