@@ -48,17 +48,17 @@
   [^JedisPooled client cmds+args]
   {:pre [(seq cmds+args)
          (every? keyword? (map first cmds+args))]}
-  (let [pipeline ^AbstractPipeline (.pipelined client)
-        responses (mapv (fn [cmd+args]
-                          (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
-                            (AbstractPipeline/.sendCommand pipeline
-                                                           ^Protocol$Command proto-command
-                                                           ^String/1 command-args)))
-                        cmds+args)]
-    (.sync pipeline)
-    (->> responses
-         (mapv Response/.get)
-         (mapv codec/deserialize))))
+  (with-open [pipeline ^AbstractPipeline (.pipelined client)]
+    (let [responses (mapv (fn [cmd+args]
+                            (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
+                              (AbstractPipeline/.sendCommand pipeline
+                                                             ^Protocol$Command proto-command
+                                                             ^String/1 command-args)))
+                          cmds+args)]
+      (.sync pipeline)
+      (->> responses
+           (mapv Response/.get)
+           (mapv codec/deserialize)))))
 
 ;; See 'script' in dev-resources/omega_red/gen_cmd_config.clj for the code which generates this
 ;; The config is a map of:

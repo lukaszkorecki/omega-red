@@ -1,5 +1,6 @@
 (ns omega-red.test-util
   (:require
+   [clojure.tools.logging :as log]
    [omega-red.redis :as redis]
    [omega-red.client :as redis.client]
    [com.stuartsierra.component :as component]))
@@ -18,12 +19,12 @@
   (redis/execute conn [:flushall]))
 
 (defn with-test-system [test]
-  (try
-    (reset! sys (component/start (component/map->SystemMap
-                                  {:redis (redis.client/create redis-config)
-                                   :redis-prefixed (redis.client/create (assoc redis-config :key-prefix "test-prefix"))})))
-
-    (test)
-
-    (finally
-      (component/stop @sys))))
+  (let [sys-map {:redis (redis.client/create redis-config)
+                 :redis-prefixed (redis.client/create (assoc redis-config :key-prefix "test-prefix"))}]
+    (try
+      (reset! sys (component/start (component/map->SystemMap sys-map)))
+      (test)
+      (catch Throwable e
+        (log/error e "Error in test setup"))
+      (finally
+        (component/stop @sys)))))
