@@ -51,6 +51,21 @@
            (redis.proto/apply-key-prefixes {:key-prefix "foo"}
                                            [:blpop "one" "two" "three" 10]))))
 
+  (testing "mget / mset"
+    (is (= [:mget "foo:one" "foo:two" "foo:three"]
+           (redis.proto/apply-key-prefixes {:key-prefix "foo"}
+                                           [:mget "one" "two" "three"])))
+
+    (is (= [:mset
+            "foo:one" "v1"
+            "foo:two" "V2"
+            "foo:three" "v2"]
+           (redis.proto/apply-key-prefixes {:key-prefix "foo"}
+                                           [:mset
+                                            "one" "v1"
+                                            "two" "v2"
+                                            "three" "v3"]))))
+
   (testing "prefix can be a keyword"
     (is (= [:get "foo:one"]
            (redis.proto/apply-key-prefixes {:key-prefix :foo}

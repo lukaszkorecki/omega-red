@@ -77,3 +77,13 @@
 
   ;; NOTE: this doesn't work for some reason
   #_(is (satisfies? omega-red.redis/IRedis (tu/conn))))
+
+(deftest mset-mget-prefix-test
+  (is (= "OK"
+         (redis/execute (tu/prefixed-conn) [:mset "test.some.key" "foo" "test.some.key2" "bar"])))
+
+  (is (= {"test.some.key" "foo"
+          "test.some.key2" "bar"}
+         (into {} (zipmap ["test.some.key" "test.some.key2"]
+                          (redis/execute (tu/prefixed-conn)
+                                         [:mget "test.some.key" "test.some.key2"]))))))

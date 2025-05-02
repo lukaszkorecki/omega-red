@@ -21,8 +21,6 @@
 
 (defn cmd+args->command-with-args [[cmd & args]]
   (let [proto-cmd (cmd-kw->cmd cmd)]
-    ;; FIXME: handle clojure data encoding!
-    ;; use https://github.com/clojure/data.fressian (rather than Nippy because we don't want Encore baggage...)
     [proto-cmd (into-array String (mapv codec/serialize args))]))
 
 (defn execute*
@@ -64,20 +62,20 @@
 ;; The config is a map of:
 ;; { <cmd-kw> {:non-key-args-tail-count <int> :type <multi|single> :summary <str> :all-args <vec-of-str>}}
 ;; It basically tells us how many keys are in given command vector (one/many) and how many non-key args are at the end
-;; so that it can be used to apply key prefixes, using 'key' function
-(def redis-cmd-config
+;; so that it can be used to apply key prefixes, using 'key' functino
+(def ^:deprecated redis-cmd-config
   (-> "redis-cmd-key-config.edn"
       io/resource
       slurp
       edn/read-string))
 
-(defn- with-prefix [key-prefix]
+(defn- ^:deprecated with-prefix [key-prefix]
   (fn with-prefix'
     [a-key]
     (codec/serialize-key [key-prefix a-key])))
 
 ;; XXX: perhaps this could be all-in-one: key prefixing +  arg-preparation operation?
-(defn apply-key-prefixes
+(defn ^:deprecated apply-key-prefixes
   "Applies key prefix to the command and its arguments.
   It detects if given command accepts a key or a variadic number of keys
   and applies prefixes to them.
@@ -107,4 +105,6 @@
         :else
         (throw (ex-info "not sure how to deal with this" {:cmd+args cmd+args}))))
     ;; no key to deal with
-    cmd+args))
+    (do
+      (println "no key prefixing" cmd+args)
+      cmd+args)))
