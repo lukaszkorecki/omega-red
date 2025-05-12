@@ -84,6 +84,6 @@
 
   (is (= {"test.some.key" "foo"
           "test.some.key2" "bar"}
-         (into {} (zipmap ["test.some.key" "test.some.key2"]
-                          (redis/execute (tu/prefixed-conn)
-                                         [:mget "test.some.key" "test.some.key2"]))))))
+         (zipmap ["test.some.key" "test.some.key2"]
+                 (redis/execute (tu/prefixed-conn)
+                                [:mget "test.some.key" "test.some.key2"])))))
