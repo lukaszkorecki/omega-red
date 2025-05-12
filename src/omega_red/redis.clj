@@ -13,7 +13,11 @@
     "Executes single redis command - passed as JDBC-style vector: [:command the rest of args]")
   (execute-pipeline
     [this cmds+args]
-    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args"))
+    "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args")
+  (transact
+    [this cmd+args]
+    "Executes a series of commands + their args in a transaction. Commands are a vector of vecs with the commands and their args just like `execute-pipeline`
+     NOTE: transactions are usually slower than pipelines, but they are more consistent."))
 
 ;; Command execution
 
