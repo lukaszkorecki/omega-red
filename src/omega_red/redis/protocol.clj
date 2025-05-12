@@ -74,16 +74,14 @@
   {:pre [(seq cmds+args)
          (every? keyword? (map first cmds+args))]}
   (with-open [tx ^AbstractTransaction (.multi client)]
-    (let [responses (mapv (fn [cmd+args]
-                            (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
-                              (AbstractPipeline/.sendCommand tx
-                                                             ^Protocol$Command proto-command
-                                                             ^String/1 command-args)))
-                          cmds+args)]
-      (.exec tx)
-      (->> responses
-           (mapv Response/.get)
-           (mapv codec/deserialize)))))
+    (mapv (fn [cmd+args]
+            (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
+              (AbstractPipeline/.sendCommand tx
+                                             ^Protocol$Command proto-command
+                                             ^String/1 command-args)))
+          cmds+args)
+    (->> (.exec tx)
+         (mapv codec/deserialize))))
 
 ;; See 'script' in dev-resources/omega_red/gen_cmd_config.clj for the code which generates this
 ;; The config is a map of:
