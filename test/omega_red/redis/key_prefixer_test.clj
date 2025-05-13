@@ -1,6 +1,6 @@
 (ns omega-red.redis.key-prefixer-test
   (:require [clojure.test :refer [deftest testing is]]
-            [omega-red.redis.key-prefixer :as redis.kp]))
+            [omega-red.redis.command :as redis.kp]))
 
 (deftest key-prefixing-test
   (testing "no prefix - nothing happens"

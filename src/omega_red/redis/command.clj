@@ -1,4 +1,4 @@
-(ns omega-red.redis.key-prefixer
+(ns omega-red.redis.command
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
