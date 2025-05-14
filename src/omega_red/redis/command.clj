@@ -2,6 +2,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [omega-red.codec :as codec]))
 
 ;; run in repl to generate this config
@@ -52,6 +53,9 @@
                 (hash-map cmd-kw prefixer-fn))))
        (into {})))
 
+(defn- default-key-formatter [a-key]
+  (codec/serialize-key [a-key]))
+
 (defn- make-key-formatter [key-prefix]
   (fn with-prefix'
     [a-key]
@@ -59,10 +63,12 @@
       (codec/serialize-key [key-prefix a-key])
       a-key)))
 
-(defn process [{:keys [key-prefix] :or {key-prefix ""}} cmd+args]
+(defn process [{:keys [key-prefix]} cmd+args]
   (if-let [key-processor (get key-processors (first cmd+args))]
-    (let [prefixer (make-key-formatter key-prefix)]
-      (key-processor cmd+args prefixer))
+    (let [key-formatter (if (str/blank? (str key-prefix))
+                          default-key-formatter
+                          (make-key-formatter key-prefix))]
+      (key-processor cmd+args key-formatter))
     ;; no command config, skip
     ;; XXX: add debug log?
     cmd+args))
