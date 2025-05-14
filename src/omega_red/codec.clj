@@ -49,6 +49,9 @@
     (instance? java.util.ArrayList res) (mapv deserialize res)
     :else res))
 
+(defn prefixable? [i]
+  (or (string? i) (keyword? i)))
+
 (defn serialize-key
   "Simplifies dealing with composite keys - rather than stitching them by hand
   using `str`, it supports transparently converting a vec of strings/keywords into
@@ -56,12 +59,12 @@
   NOTE: `nil` values will be omitted, but the vec cannot be empty!
   "
   [args]
-  {:pre [(every? #(or (string? %) (keyword? %) (nil? %)) args)
-         (seq (remove nil? args))]}
+  {:pre [(every? #(or (string? %) (keyword? %) (nil? %)) args)]}
   (->> args
        (remove nil?)
        (mapv (fn [segment]
                (if (qualified-keyword? segment)
                  (str (namespace segment) "/" (name segment))
                  (name segment))))
+       (remove str/blank?)
        (str/join ":")))

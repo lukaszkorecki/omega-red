@@ -2,51 +2,72 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.string :as s]
    [omega-red.codec :as codec]))
 
 ;; run in repl to generate this config
 (comment
-  (require '[omega-red.gen-cmd-config :as gen-cmd-config])
+  (require '[omega-red.gen-cmd-config :as gen-cmd-config] :reload)
   (gen-cmd-config/-main))
 
+;; Commands are generated ^^^^^ schema is:
+;; {:cmd.name {:single-key-arg? bool
+;;             :key-index <int> - index of a key in the command's args, starting from 1 (0th is the command)
+;;             ; only present if single-key-arg is false
+;;             :key-specs { }
 (def cmd-config
-  (-> "redis-cmd-config.edn"
+  (-> "redis-commands.edn"
       io/resource
       slurp
       edn/read-string))
 
-(defn- make-prefixer [key-prefix]
+(defn- first-key-prefixer [cmd+args prefixer]
+  (update-in cmd+args [1] prefixer))
+
+(defn- block-key-prefixer [cmd+args prefixer]
+  (->> cmd+args
+       (map-indexed (fn [idx i]
+                      (if (odd? idx)
+                        (prefixer i)
+                        i)))))
+
+(defn- first-key-variadic-prefixer
+  "Prefixes all keys in the command with the prefixer. e.g `[:del \"foo\" \"bar\"]` -> `[:del \"prefix:foo\" \"prefix:bar\"]`"
+  [[cmd & args] prefixer]
+  (concat [cmd] (mapv prefixer args)))
+
+(defn- variadic-key-prefixer [cmd+args prefixer]
+  (throw (ex-info "not implemented" {:cmd+args cmd+args})))
+
+(defn no-op-prefixer [cmd+args _prefixer]
+  cmd+args)
+
+(def key-processors
+  (->> cmd-config
+       (map (fn [[cmd-kw {:keys [is-key-first-arg?
+                                 has-only-one-key-arg?
+                                 has-variadic-key-args?
+                                 num-args
+                                 has-block-key-args?]}]]
+              (let [prefixer-fn (cond
+                                  has-only-one-key-arg? first-key-prefixer
+                                  has-block-key-args? block-key-prefixer
+                                  (and is-key-first-arg? has-variadic-key-args?) first-key-variadic-prefixer
+                                  :else no-op-prefixer)]
+                (hash-map cmd-kw prefixer-fn))))
+       (into {})))
+
+(defn- make-key-formatter [key-prefix]
   (fn with-prefix'
     [a-key]
-    (codec/serialize-key [key-prefix a-key])))
+    (if (codec/prefixable? a-key)
+      (codec/serialize-key [key-prefix a-key])
+      a-key)))
 
-(defn find-keys-and-apply-prefix [{:keys [key-search prefixer cmd+args]}]
-  (let [{:keys [start-idx step last-key-idx limit]} key-search
-
-        key-indexes (set (range start-idx (- (dec (count cmd+args)) last-key-idx) step))
-        ]
-
-
-    (r/pp {:cmd+args (map-indexed #(vector % %2) cmd+args)
-           :key-indexes (sort key-indexes)})
-    (->> cmd+args
-         (map-indexed (fn [idx arg]
-                        (if (key-indexes idx)
-                          (prefixer arg)
-                          arg)))
-         vec)))
-
-(defn apply-prefix [key-prefix cmd+args]
-  (if-let [cmd-conf (get cmd-config (first cmd+args))]
-    (let [prefixer (make-prefixer key-prefix)
-          {:keys [is-single-key-arg? key-search]} cmd-conf]
-
-      (if is-single-key-arg?
-        ;; optimized for single key arg, which is 154 out of 193 known commands
-        (update-in cmd+args [1] prefixer)
-        ;; slow case - we're dealing with multi key ops
-        (find-keys-and-apply-prefix {:key-search key-search
-                                     :prefixer prefixer
-                                     :cmd+args cmd+args})))
+(defn process [{:keys [key-prefix] :or {key-prefix ""}} cmd+args]
+  (if-let [key-processor (get key-processors (first cmd+args))]
+    (let [prefixer (make-key-formatter key-prefix)]
+      (key-processor cmd+args prefixer))
     ;; no command config, skip
+    ;; XXX: add debug log?
     cmd+args))
