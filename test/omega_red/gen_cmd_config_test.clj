@@ -29,8 +29,8 @@
           :command :mset
           :has-block-key-args? true
           :has-only-one-key-arg? false
-          :is-key-first-arg? false
-          :has-variadic-key-args? false
+          :is-key-first-arg? true
+          :has-variadic-key-args? true
           :num-args 3
           :variadic? true}
          (get gcc/command-specs :mset))))
@@ -78,3 +78,6 @@
           :num-args 4
           :variadic? true}
          (get gcc/command-specs :hset))))
+
+(deftest xreadgroup-spec-test
+  (is (nil? (get gcc/command-specs :xreadgroup))))

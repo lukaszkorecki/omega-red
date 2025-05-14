@@ -2,7 +2,6 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as s]
    [omega-red.codec :as codec]))
 
 ;; run in repl to generate this config
@@ -34,10 +33,7 @@
 (defn- first-key-variadic-prefixer
   "Prefixes all keys in the command with the prefixer. e.g `[:del \"foo\" \"bar\"]` -> `[:del \"prefix:foo\" \"prefix:bar\"]`"
   [[cmd & args] prefixer]
-  (concat [cmd] (mapv prefixer args)))
-
-(defn- variadic-key-prefixer [cmd+args prefixer]
-  (throw (ex-info "not implemented" {:cmd+args cmd+args})))
+  (vec (concat [cmd] (mapv prefixer args))))
 
 (defn no-op-prefixer [cmd+args _prefixer]
   cmd+args)
@@ -47,11 +43,10 @@
        (map (fn [[cmd-kw {:keys [is-key-first-arg?
                                  has-only-one-key-arg?
                                  has-variadic-key-args?
-                                 num-args
-                                 has-block-key-args?]}]]
+                                 has-block-key-args?] :as _spec}]]
               (let [prefixer-fn (cond
                                   has-only-one-key-arg? first-key-prefixer
-                                  has-block-key-args? block-key-prefixer
+                                  (and is-key-first-arg? has-block-key-args?) block-key-prefixer
                                   (and is-key-first-arg? has-variadic-key-args?) first-key-variadic-prefixer
                                   :else no-op-prefixer)]
                 (hash-map cmd-kw prefixer-fn))))

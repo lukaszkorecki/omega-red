@@ -84,3 +84,20 @@
     (is (= [:get "omega-red.redis.command-test/one"]
            (redis.cmd/process {}
                               [:get ::one])))))
+
+(deftest sort-test
+  (is (= [:sort "foo:one" :by "*"]
+         (redis.cmd/process {:key-prefix "foo"} [:sort "one" :by "*"]))))
+
+(deftest xreadgroup-test
+  (testing "not supported!"
+    (is (= [:xreadgroup
+            :group "foo" "bar"
+            :count 1
+            :block 100
+            :streams "q1" "q2"]
+           (redis.cmd/process {:key-prefix "foo"} [:xreadgroup
+                                                   :group "foo" "bar"
+                                                   :count 1
+                                                   :block 100
+                                                   :streams "q1" "q2"])))))

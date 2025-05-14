@@ -49,19 +49,9 @@
                                        (filter (fn [arg] (= "key" (:type arg))))
                                        not-empty?)
 
-                    has-block-key-args? (when-not has-key-args?
-                                          (->> arguments
-                                               (filter (fn [arg]
-                                                         (when (= :mset cmd-kw)
-                                                           (tap> [(= "block" (:type arg))
-                                                                  (some #(= "key" (:type %)) (:arguments arg))
-                                                                  (:arguments arg)]))
-
-                                                         (and (= "block" (:type arg))
-                                                              (some #(= "key" (:type %)) (:arguments arg)))))
-                                               not-empty?))
+                    has-block-key-args? (contains? #{:mset :msetnx} cmd-kw)
                     ;; vast majority of commands have a single key arg
-                    is-key-first-arg? (= "key" (:type (first arguments)))
+                    is-key-first-arg? (or (contains? #{:mset :msetnx} cmd-kw) (= "key" (:type (first arguments))))
                     ;; NOTE: this is not precise - there are commands with multiple key args AFTER some other arguments
                     ;;       we don't care about those for now
                     has-variadic-key-args? (and is-key-first-arg?

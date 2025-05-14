@@ -59,7 +59,8 @@
   NOTE: `nil` values will be omitted, but the vec cannot be empty!
   "
   [args]
-  {:pre [(every? #(or (string? %) (keyword? %) (nil? %)) args)]}
+  {:pre [(every? #(or (string? %) (keyword? %) (nil? %)) args)
+         (seq (remove nil? args))]}
   (->> args
        (remove nil?)
        (mapv (fn [segment]
