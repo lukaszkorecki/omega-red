@@ -3,10 +3,11 @@
   (:require
    [omega-red.client.connection-pool :as client.connection-pool]
    [omega-red.redis]
+   [omega-red.redis.command :as redis.command]
    [omega-red.redis.protocol :as redis.proto])
   (:import
    [java.net URI]
-   [redis.clients.jedis JedisPooled JedisPoolConfig]
+   [redis.clients.jedis JedisPoolConfig JedisPooled]
    [redis.clients.jedis.util JedisURIHelper]))
 
 (defn create-pooled-connection
@@ -67,9 +68,9 @@
 
      'omega-red.redis/execute (fn execute' [this cmd+args]
                                 (redis.proto/execute* (:pool this)
-                                                      (redis.proto/apply-key-prefixes this cmd+args)))
+                                                      (redis.command/process this cmd+args)))
 
      'omega-red.redis/execute-pipeline (fn execute-pipeline' [this cmds+args]
                                          (redis.proto/execute-pipeline* (:pool this)
-                                                                        (mapv #(redis.proto/apply-key-prefixes this %)
+                                                                        (mapv #(redis.command/process this %)
                                                                               cmds+args)))}))
