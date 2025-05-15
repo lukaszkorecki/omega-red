@@ -1,11 +1,18 @@
 (ns omega-red.gen-cmd-config
   (:require
-   [clojure.walk :as walk]
    [cheshire.core :as json]
-   [clojure.string :as str]))
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.walk :as walk])
+  (:import
+   [java.io File]))
 
-(comment
-  (spit "./redis-commands.json" (slurp "https://raw.githubusercontent.com/taoensso/carmine/refs/heads/master/resources/redis-commands.json")))
+(let [source-url "https://raw.githubusercontent.com/taoensso/carmine/refs/heads/master/resources/redis-commands.json"
+      local-fname "./redis-commands.json"
+      f (io/file local-fname)]
+  (when-not (File/.exists f)
+    (->> (slurp source-url)
+         (spit local-fname))))
 
 ;; map of {<CMD> {CMD SPEC}}
 (def raw-redis-cmds
