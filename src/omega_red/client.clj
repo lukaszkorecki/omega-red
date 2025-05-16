@@ -72,4 +72,9 @@
      'omega-red.redis/execute-pipeline (fn execute-pipeline' [this cmds+args]
                                          (redis.proto/execute-pipeline* (:pool this)
                                                                         (mapv #(redis.proto/apply-key-prefixes this %)
-                                                                              cmds+args)))}))
+                                                                              cmds+args)))
+
+     'omega-red.redis/transact (fn transact' [this cmds+args]
+                                 (redis.proto/transact* (:pool this)
+                                                        (mapv #(redis.proto/apply-key-prefixes this %)
+                                                              cmds+args)))}))
