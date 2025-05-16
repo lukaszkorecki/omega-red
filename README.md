@@ -39,7 +39,7 @@ Rather than implementing a function for each Redis command, Omega Red uses vecto
 To send these commands to Redis, use `omega-red.redis/execute`, `omega-red.redis/execute-pipeline` or `omega-red.redis/transact` functions.
 
 - `(execute conn [:command + args])` - for  single commands
-- `(exececute-pipeline conn [ [:command1 + args] [:command2 + args]...])` - for pipeline operations - increases performance by sending and reading
+- `(execute-pipeline conn [ [:command1 & args] [:command2 & args]...])` - for pipeline operations - increases performance by sending and reading
   multiple commands in one go, but doesn't come with any consistency guarantees
 - `(transact conn [ [:command1 + args] [:command2 + args]...])` - for transactions - all commands are executed in a transaction, and if any of them fails, the whole transaction is rolled back.
 
