@@ -10,7 +10,10 @@
           :is-key-first-arg? true
           :has-variadic-key-args? false
           :num-args 2
-          :variadic? false}
+          :variadic? false
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :get))))
 
 (deftest set-spec-test
@@ -21,18 +24,24 @@
           :is-key-first-arg? true
           :has-variadic-key-args? false
           :num-args 3
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? true
+          :tokens ["NX" "XX" "GET" "KEEPTTL"]}
          (get gcc/command-specs :set))))
 
 (deftest mset-spec-test
-  (is (= {:arguments ["data"]
+  (is (= {:arguments ["key" "value"]
           :command :mset
           :has-block-key-args? true
           :has-only-one-key-arg? false
           :is-key-first-arg? true
           :has-variadic-key-args? true
           :num-args 3
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :mset))))
 
 (deftest mget-spec-test
@@ -43,7 +52,10 @@
           :is-key-first-arg? true
           :has-variadic-key-args? true
           :num-args 2
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :mget))))
 
 (deftest del-spec-test
@@ -54,7 +66,10 @@
           :is-key-first-arg? true
           :has-variadic-key-args? true
           :num-args 2
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :del))))
 
 (deftest blpop-spec-test
@@ -65,7 +80,10 @@
           :has-only-one-key-arg? false
           :is-key-first-arg? true
           :num-args 3
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :blpop))))
 
 (deftest hset-spec-test
@@ -76,8 +94,22 @@
           :has-variadic-key-args? false
           :is-key-first-arg? true
           :num-args 4
-          :variadic? true}
+          :variadic? true
+          :process-keys? true
+          :process-tokens? false
+          :tokens []}
          (get gcc/command-specs :hset))))
 
 (deftest xreadgroup-spec-test
-  (is (nil? (get gcc/command-specs :xreadgroup))))
+  (is (= {:arguments ["group-block" "count" "milliseconds" "noack" "streams"]
+          :command :xreadgroup
+          :has-block-key-args? false
+          :has-only-one-key-arg? false
+          :has-variadic-key-args? false
+          :is-key-first-arg? false
+          :num-args 7
+          :variadic? true
+          :process-keys? false
+          :process-tokens? true
+          :tokens ["NOACK"]}
+         (get gcc/command-specs :xreadgroup))))

@@ -27,6 +27,19 @@
               {(name k) v}))
        (into {})))
 
+(defn extract-all-tokens [arguments]
+  (let [tokens (transient [])]
+    (walk/prewalk (fn [x]
+                    (if (and (map? x)
+                             (or
+                              (= "pure-token" (:type x))
+                              (= "token" (:type x))))
+                      (conj! tokens (:token x))
+                      x))
+                  arguments)
+
+    (persistent! tokens)))
+
 ;; theres hundreds of commands, so let's first determine which have key args?
 ;; 154 commands have key as their first and only key-arg
 ;; 14 commands where 1st arg is key, but it's multiple keys after the command:
@@ -48,36 +61,59 @@
   (->> raw-redis-cmds
        (map (fn [[cmd-str spec]]
               (let [cmd-kw (-> cmd-str str/lower-case (str/replace " " ".") keyword)
-                    {:keys [arguments summary arity key_specs]} spec
+                    {:keys [arguments arity]} spec
                     ;; helper values to help reason about the command and its spec
                     variadic? (neg? arity)
                     num-args (abs arity) ;; includes command itself!
+                    command-tokens (extract-all-tokens arguments)
+
+                    ;; key stuff
                     has-key-args? (->> arguments
                                        (filter (fn [arg] (= "key" (:type arg))))
                                        not-empty?)
 
-                    has-block-key-args? (contains? #{:mset :msetnx} cmd-kw)
-                    ;; vast majority of commands have a single key arg
-                    is-key-first-arg? (or (contains? #{:mset :msetnx} cmd-kw) (= "key" (:type (first arguments))))
+                    ;; technically only MSET and MSETNX have a block key arg
+                    has-block-key-args? (= "key" (->> arguments
+                                                      first
+                                                      :arguments
+                                                      first
+                                                      :type))
+
+                    arg-names (if has-block-key-args?
+                                (concat (->> arguments
+                                             (remove #(contains? #{"data" "block"} (:type %)))
+                                             (map :name))
+                                        (->> arguments
+                                             (mapcat #(map :name (:arguments %)))
+                                             (filter not-empty)))
+                                (map :name arguments))
+
+                    ;; vast majority of commands have a single key arg, even if they have multiple or block args
+                    is-key-first-arg? (boolean
+                                       (or has-block-key-args?
+                                           (= "key" (:type (first arguments)))))
                     ;; NOTE: this is not precise - there are commands with multiple key args AFTER some other arguments
                     ;;       we don't care about those for now
-                    has-variadic-key-args? (and is-key-first-arg?
-                                                (:multiple (first arguments)))]
+                    has-variadic-key-args? (boolean
+                                            (and is-key-first-arg?
+                                                 (:multiple (first arguments))))
+                    has-only-one-key-arg? (and is-key-first-arg? (not has-variadic-key-args?))]
 
-                ;; TODO: extract all pure-tokens and store as 'keywords' so that we can
-                ;;       allow for using Clojure keywords as Redis keywords eg
-                ;;       [:set "foobar" "val" :EX 10]
-                (when (or has-key-args? has-block-key-args?)
-                  [cmd-kw (merge {:command cmd-kw
-                                  :arguments (map :name arguments)
-                                  :num-args num-args}
-                                 (update-vals {:variadic? variadic?
-                                               :is-key-first-arg? is-key-first-arg?
-                                               :has-only-one-key-arg? (and is-key-first-arg? (not has-variadic-key-args?))
-                                               :has-variadic-key-args? has-variadic-key-args?
-                                               :has-block-key-args? has-block-key-args?}
+                (when (or has-key-args? has-block-key-args? (seq command-tokens))
+                  [cmd-kw {:command cmd-kw
+                           :process-tokens? (boolean (seq command-tokens))
+                           :arguments arg-names
+                           :tokens command-tokens
 
-                                              boolean))]))))
+                           :num-args num-args
+                           :variadic? variadic?
+
+                           :process-keys? (or has-key-args? has-block-key-args?)
+                           :is-key-first-arg? is-key-first-arg?
+                           :has-only-one-key-arg? has-only-one-key-arg?
+                           :has-variadic-key-args? has-variadic-key-args?
+                           :has-block-key-args? has-block-key-args?}]))))
+
        (remove nil?)
        (map (fn [[cmd spec]]
               {cmd spec}))

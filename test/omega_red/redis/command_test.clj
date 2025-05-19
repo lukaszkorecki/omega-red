@@ -101,3 +101,12 @@
                                                    :count 1
                                                    :block 100
                                                    :streams "q1" "q2"])))))
+
+(deftest token-in-command-test
+  (testing "expiration in SET"
+    (is (= [:set "foo" "bar" "EX" 10]
+           (redis.cmd/process {} [:set "foo" "bar" :EX 10]))))
+
+  (testing "sort"
+    (is (= [:sort "foo" "BY" "*" "DESC"]
+           (redis.cmd/process {} [:sort "foo" :by "*" :desc])))))

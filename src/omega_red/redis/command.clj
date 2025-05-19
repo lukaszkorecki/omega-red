@@ -41,6 +41,7 @@
 
 (def key-processors
   (->> cmd-config
+       (filter :process-keys?)
        (map (fn [[cmd-kw {:keys [is-key-first-arg?
                                  has-only-one-key-arg?
                                  has-variadic-key-args?
@@ -51,6 +52,18 @@
                                   (and is-key-first-arg? has-variadic-key-args?) first-key-variadic-prefixer
                                   :else no-op-prefixer)]
                 (hash-map cmd-kw prefixer-fn))))
+       (into {})))
+
+(def token-processors
+  (->> cmd-config
+       (filter :process-tokens?)
+       (map (fn [[cmd-kw {:keys [tokens]}]]
+              ;; generate translation of lower & upper case strings & keywords to upper case strings
+
+
+
+
+              ))
        (into {})))
 
 (defn- default-key-formatter [a-key]
