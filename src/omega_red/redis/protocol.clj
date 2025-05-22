@@ -41,7 +41,7 @@
 (defn execute-pipeline*
   "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
 
-  (execute-pipeline! conn [[:ping]
+  (execute-pipeline* conn [[:ping]
                            [:set \"foo\" \"bar\"]
                            [:get \"foo\"]
                            [:del \"foo\"]])
@@ -64,10 +64,10 @@
 (defn transact*
   "Executes a transaction of Redis commands as a sequence of vectors of commands and arguments:
 
-  (execute-pipeline! conn [[:ping]
-                           [:set \"foo\" \"bar\"]
-                           [:get \"foo\"]
-                           [:del \"foo\"]])
+  (transact* conn [[:ping]
+                   [:set \"foo\" \"bar\"]
+                   [:get \"foo\"]
+                   [:del \"foo\"]])
   "
 
   [^JedisPooled client cmds+args]
