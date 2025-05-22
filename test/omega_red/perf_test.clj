@@ -33,7 +33,7 @@
                          (mapv (fn [i]
                                  (.submit executor ^Callable
                                           (fn []
-                                            (Thread/sleep (rand-int 30))
+                                            (Thread/sleep ^long (rand-int 30))
                                             (redis/execute client [:set (str "test." i) {:number i}]))))))
               result (mapv deref tasks)]
           (is (= 1000 (count result)))
@@ -56,7 +56,7 @@
                          (mapv (fn [i]
                                  (.submit executor
                                           ^Callable (fn []
-                                                      (Thread/sleep (rand-int 30))
+                                                      (Thread/sleep ^long (rand-int 30))
                                                       (redis/execute-pipeline client
                                                                               [[:set (str "test." i) {:number i}]
                                                                                [:set (str "test." (inc i)) {:number (inc i)}]]))))))

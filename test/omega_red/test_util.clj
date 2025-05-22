@@ -15,6 +15,9 @@
 (defn conn []
   (:redis @sys))
 
+(defn prefixed-conn []
+  (:redis-prefixed @sys))
+
 (defn clean-up-all-data [conn]
   (redis/execute conn [:flushall]))
 

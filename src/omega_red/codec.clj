@@ -49,6 +49,9 @@
     (instance? java.util.ArrayList res) (mapv deserialize res)
     :else res))
 
+(defn prefixable? [i]
+  (or (string? i) (keyword? i)))
+
 (defn serialize-key
   "Simplifies dealing with composite keys - rather than stitching them by hand
   using `str`, it supports transparently converting a vec of strings/keywords into
@@ -64,4 +67,5 @@
                (if (qualified-keyword? segment)
                  (str (namespace segment) "/" (name segment))
                  (name segment))))
+       (remove str/blank?)
        (str/join ":")))

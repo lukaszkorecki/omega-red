@@ -89,3 +89,31 @@
 
   ;; NOTE: this doesn't work for some reason
   #_(is (satisfies? omega-red.redis/IRedis (tu/conn))))
+
+(deftest mset-mget-prefix-test
+  (is (= "OK"
+         (redis/execute (tu/prefixed-conn) [:mset "test.some.key" "foo" "test.some.key2" "bar"])))
+
+  (is (= {"test.some.key" "foo"
+          "test.some.key2" "bar"}
+         (zipmap ["test.some.key" "test.some.key2"]
+                 (redis/execute (tu/prefixed-conn)
+                                [:mget "test.some.key" "test.some.key2"])))))
+
+(deftest key-prefixer-fn-test
+  (testing "simple"
+    (is (= "foo" (redis/key "foo")))
+    (is (= "foo:bar" (redis/key "foo" "bar"))))
+
+  (testing "keywords"
+    (is (= "foo:bar:baz" (redis/key :foo :bar :baz)))
+    (is (= "omega-red.redis-test/foo:omega-red.redis-test/bar:omega-red.redis-test/baz"
+           (redis/key ::foo ::bar ::baz))))
+
+  (testing "nil handling"
+    (is (= "foo" (redis/key nil "foo")))
+    (is (= "foo:bar:baz" (redis/key :foo "bar" nil :baz))))
+
+  (testing "validation"
+    (is (thrown-with-msg? AssertionError #"Assert failed:"
+                          (redis/key :foo :bar :baz 10)))))

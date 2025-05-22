@@ -47,9 +47,12 @@ jobs:
     - name: Install dependencies
       run: lein deps
 
+    - name: Prepeare command config
+      run: 	lein run -m omega-red.gen-cmd-config
+
     - name: Run omega-red tests for ${{ matrix.version }}
       id: tests
-      run: lein test 2>&1
+      run: lein ci-test 2>&1
       env:
         REDIS_HOST: redis
         REDIS_PORT: 6379
