@@ -29,6 +29,18 @@
     (testing "once pipeline finishes value is unchanged"
       (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
 
+(deftest transactions-test
+  (testing "operations can be sent in a transaction - kinda like pipelines, but with stronger consistency"
+    (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"])))
+    (is (= [nil "OK" "oh ok" 1]
+           (redis/transact (tu/conn)
+                           [[:get "test.some.key.pipe"]
+                            [:set "test.some.key.pipe" "oh ok"]
+                            [:get "test.some.key.pipe"]
+                            [:del "test.some.key.pipe"]])))
+    (testing "once pipeline finishes value is unchanged"
+      (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key.pipe"]))))))
+
 (deftest sets-test
   (testing "we can work with sets"
     (is (= 3

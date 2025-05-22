@@ -8,6 +8,7 @@
   (:import
    [redis.clients.jedis
     AbstractPipeline
+    AbstractTransaction
     JedisPooled
     Protocol$Command
     Response]))
@@ -40,7 +41,7 @@
 (defn execute-pipeline*
   "Executes a pipeline of Redis commands as a sequence of vectors of commands and arguments:
 
-  (execute-pipeline! conn [[:ping]
+  (execute-pipeline* conn [[:ping]
                            [:set \"foo\" \"bar\"]
                            [:get \"foo\"]
                            [:del \"foo\"]])
@@ -59,6 +60,28 @@
       (->> responses
            (mapv Response/.get)
            (mapv codec/deserialize)))))
+
+(defn transact*
+  "Executes a transaction of Redis commands as a sequence of vectors of commands and arguments:
+
+  (transact* conn [[:ping]
+                   [:set \"foo\" \"bar\"]
+                   [:get \"foo\"]
+                   [:del \"foo\"]])
+  "
+
+  [^JedisPooled client cmds+args]
+  {:pre [(seq cmds+args)
+         (every? keyword? (map first cmds+args))]}
+  (with-open [tx ^AbstractTransaction (.multi client)]
+    (mapv (fn [cmd+args]
+            (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)]
+              (AbstractPipeline/.sendCommand tx
+                                             ^Protocol$Command proto-command
+                                             ^String/1 command-args)))
+          cmds+args)
+    (->> (.exec tx)
+         (mapv codec/deserialize))))
 
 ;; See 'script' in dev-resources/omega_red/gen_cmd_config.clj for the code which generates this
 ;; The config is a map of:
