@@ -41,7 +41,8 @@
 
 (def key-processors
   (->> cmd-config
-       (filter :process-keys?)
+       (filter (fn [[_cmd-kw {:keys [process-keys?]}]]
+                 process-keys?))
        (map (fn [[cmd-kw {:keys [is-key-first-arg?
                                  has-only-one-key-arg?
                                  has-variadic-key-args?
@@ -56,14 +57,24 @@
 
 (def token-processors
   (->> cmd-config
-       (filter :process-tokens?)
+       (filter (fn [[_cmd-kw {:keys [process-tokens?]}]]
+                 process-tokens?))
        (map (fn [[cmd-kw {:keys [tokens]}]]
               ;; generate translation of lower & upper case strings & keywords to upper case strings
+              (let [token-variants (->> tokens
+                                        (reduce (fn [acc token] ;; always starts uppercase
+                                                  (assoc acc
+                                                         (keyword (str token)) token
+                                                         (keyword (str/lower-case (str token))) token))
+                                                {}))
+                    converter-fn (fn process-tokens' [[cmd & args]]
+                                   (vec (concat [cmd] (mapv (fn [arg]
+                                                              (get token-variants arg arg))
+                                                            args))))]
 
-
-
-
-              ))
+                (when (= :set cmd-kw)
+                  (tap> {:set token-variants}))
+                (hash-map cmd-kw converter-fn))))
        (into {})))
 
 (defn- default-key-formatter [a-key]
@@ -77,11 +88,14 @@
       a-key)))
 
 (defn process [{:keys [key-prefix]} cmd+args]
-  (if-let [key-processor (get key-processors (first cmd+args))]
-    (let [key-formatter (if (str/blank? (str key-prefix))
-                          default-key-formatter
-                          (make-key-formatter key-prefix))]
-      (key-processor cmd+args key-formatter))
-    ;; no command config, skip
-    ;; XXX: add debug log?
-    cmd+args))
+  (let [cmd+args (if-let [key-processor (get key-processors (first cmd+args))]
+                   (let [key-formatter (make-key-formatter key-prefix) #_(if (not (str/blank? (str key-prefix)))
+                                                                           (make-key-formatter key-prefix)
+                                                                           default-key-formatter)]
+                     (key-processor cmd+args key-formatter))
+                   ;; no command config, skip
+                   ;; XXX: add debug log?
+                   cmd+args)]
+    (if-let [token-processor (get token-processors (first cmd+args))]
+      (token-processor cmd+args)
+      cmd+args)))

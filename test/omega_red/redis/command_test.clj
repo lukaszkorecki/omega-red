@@ -86,16 +86,16 @@
                               [:get ::one])))))
 
 (deftest sort-test
-  (is (= [:sort "foo:one" :by "*"]
+  (is (= [:sort "foo:one" "BY" "*"]
          (redis.cmd/process {:key-prefix "foo"} [:sort "one" :by "*"]))))
 
 (deftest xreadgroup-test
   (testing "key prefixing is not supported!"
     (is (= [:xreadgroup
-            :group "foo" "bar"
-            :count 1
-            :block 100
-            :streams "q1" "q2"]
+            "GROUP" "foo" "bar"
+            "COUNT" 1
+            "BLOCK" 100
+            "STREAMS" "q1" "q2"]
            (redis.cmd/process {:key-prefix "foo"} [:xreadgroup
                                                    :group "foo" "bar"
                                                    :count 1
@@ -108,10 +108,10 @@
            (redis.cmd/process {:key-prefix "foo"} [:eval "bar" 1 "return nil;"])))))
 
 (deftest token-in-command-test
-  (testing "expiration in SET"
+  (testing "expiration in SET - using upper case keyword"
     (is (= [:set "foo" "bar" "EX" 10]
            (redis.cmd/process {} [:set "foo" "bar" :EX 10]))))
 
-  (testing "sort"
+  (testing "sort with BY and DESC as lower case keywords"
     (is (= [:sort "foo" "BY" "*" "DESC"]
            (redis.cmd/process {} [:sort "foo" :by "*" :desc])))))
