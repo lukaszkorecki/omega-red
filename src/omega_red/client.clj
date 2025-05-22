@@ -77,5 +77,5 @@
 
      'omega-red.redis/transact (fn transact' [this cmds+args]
                                  (redis.proto/transact* (:pool this)
-                                                        (mapv #(redis.proto/apply-key-prefixes this %)
+                                                        (mapv #(redis.command/process this %)
                                                               cmds+args)))}))
