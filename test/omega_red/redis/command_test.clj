@@ -90,7 +90,7 @@
          (redis.cmd/process {:key-prefix "foo"} [:sort "one" :by "*"]))))
 
 (deftest xreadgroup-test
-  (testing "not supported!"
+  (testing "key prefixing is not supported!"
     (is (= [:xreadgroup
             :group "foo" "bar"
             :count 1
@@ -101,6 +101,11 @@
                                                    :count 1
                                                    :block 100
                                                    :streams "q1" "q2"])))))
+
+(deftest eval-test
+  (testing "key prefixing is not supported either"
+    (is (= [:eval "bar" 1 "return nil;"]
+           (redis.cmd/process {:key-prefix "foo"} [:eval "bar" 1 "return nil;"])))))
 
 (deftest token-in-command-test
   (testing "expiration in SET"
