@@ -27,7 +27,7 @@
           :variadic? true
           :process-keys? true
           :process-tokens? true
-          :tokens ["NX" "XX" "GET" "KEEPTTL"]}
+          :tokens ["NX" "XX" "GET" "EX" "PX" "EXAT" "PXAT" "KEEPTTL"]}
          (get gcc/command-specs :set))))
 
 (deftest mset-spec-test
@@ -111,5 +111,5 @@
           :variadic? true
           :process-keys? false
           :process-tokens? true
-          :tokens ["NOACK"]}
+          :tokens ["GROUP" "COUNT" "BLOCK" "NOACK" "STREAMS"]}
          (get gcc/command-specs :xreadgroup))))
