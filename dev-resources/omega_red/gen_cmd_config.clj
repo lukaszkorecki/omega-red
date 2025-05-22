@@ -29,14 +29,11 @@
 
 (defn extract-all-tokens [arguments]
   (let [tokens (transient [])]
-    (walk/prewalk (fn [x]
-                    (if (and (map? x)
-                             (or
-                              (= "pure-token" (:type x))
-                              (= "token" (:type x))))
-                      (conj! tokens (:token x))
-                      x))
-                  arguments)
+    (walk/postwalk (fn [x]
+                     (if (and (map? x) (not-empty (:token x)))
+                       (conj! tokens (:token x))
+                       x))
+                   arguments)
 
     (persistent! tokens)))
 
