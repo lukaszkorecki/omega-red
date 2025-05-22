@@ -109,14 +109,32 @@ Once the component is created and started, you can call `omega-red.redis/execute
 (redis/key "some" :cool "stuff" ) ;; => "some:cool:stuff"
 (redis/key :my.domain/thing) ;; => "my.domain/thing"
  ```
+##### 'Tokens' in commands
+
+Redis' specs use the term 'token' to describe the arguments of a command. Some commands support named arguments, such as `SET`'s `EX` or `NX`.
+To make working with the DSL more convinient Omega Red supports passing these tokens as strings or keywords, so you can write:
+
+```clojure
+(redis/execute con [:set "foobar" :ex 10]) ;; => "OK"
+```
+
 
 ##### Automatic key prefixing
 
 Enforcing consistent key prefixes is often used when several applications share the same Redis instance. It's also
-helpful if you need to version your keys or separate them by environment.
+helpful if you need to version your keys or separate them by environment/workload to avoid collisions.
+
 When key prefixing is configred, Omega Red will figure out for you which parts of Redis commands are keys
-and will prefix them automatically. Auto-prefixing is enabled
-by setting `:key-prefix` in options map when creating the component:
+and will apply the prefix automatically.
+
+> [!WARNING]
+> Automatic key prefixing is implemented by using Redis' own command specification to figure out which arguments are keys, however it's not perfect
+> Due to inconsistencies of Redis specs and general lack of information how command processing should be implemented
+> 100% command coverage is not guaranteed. If you find a command that doesn't work as expected, please file an issue.
+> Currently known commands that **are not** prefixed are `EVAL`, `SCRIPT` as and others. To find out supported commands
+> eval `(sort (keys omega-red.redis.command/key-processors))` in the REPL.
+
+Auto-prefixing is enabled by setting `:key-prefix` in options map when creating the client component:
 
 ```clojure
 (ns omega-red.redis-test
@@ -139,9 +157,6 @@ by setting `:key-prefix` in options map when creating the component:
 ;; HOWEVER:
 (redis/execute srv1-client [:keys "foo*"]) ;; => [] - because of autoprefixing!
 ```
-
-
-Automatic key prefixing is 100% safe as internally the client builds a command parser based on Redis' own command specification.
 
 ##### Cache utils
 
@@ -286,5 +301,5 @@ To work around this use strings instead:
 - [x] explicit connection pool component with its own lifecycle
 - [x] move off Carmine and use Jedis or Lettuce directly (because of the point above)
 - [ ] more Jedis/Apache Pool configuration options
-- [ ] improved command arg handling, to account for non-key arguments that can expressedp themselves as keywords
+- [x] improved command arg handling, to account for non-key arguments that can expressedp themselves as keywords
 - [ ] metrics/OTel support
