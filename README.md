@@ -36,10 +36,12 @@ Rather than implementing a function for each Redis command, Omega Red uses vecto
 [:command-as-keyword arg1 arg2 arg3 ...]
 ```
 
-To send these commands to Redis, use `omega-red.redis/execute` or `omega-red.redis/execute-pipeline` functions. The former is for single commands, the latter is for pipeline operations.
+To send these commands to Redis, use `omega-red.redis/execute`, `omega-red.redis/execute-pipeline` or `omega-red.redis/transact` functions.
 
 - `(execute conn [:command + args])` - for  single commands
-- `(exececute-pipeline conn [ [:command1 + args] [:command2 + args]...])` - for pipeline operations
+- `(execute-pipeline conn [ [:command1 & args] [:command2 & args]...])` - for pipeline operations - increases performance by sending and reading
+  multiple commands in one go, but doesn't come with any consistency guarantees
+- `(transact conn [ [:command1 & args] [:command2 & args]...])` - for transactions - all commands are executed in a transaction, and if any of them fails, the whole transaction is rolled back.
 
 
 where `conn` is an instance of a client component created with `omega-red.client/create`.
@@ -79,35 +81,42 @@ Once the component is created and started, you can call `omega-red.redis/execute
             [com.stuartsierra.component :as component]))
 
 
-
 (def client (component/start
              (redis.client/create {:uri "redis://localhost:6379"})))
 
-
-
-;; example usage:
-
+;; simple commands, with transparent clojure data serialization
 (redis/execute client [:set "some-data" {:a :map "is" #{"supported"}}])
 (redis/execute client [:get "some-data"]) ;; => {:a :map "is" #{"supported"}}
 
-
+;; no magic here, just clojure data
 (redis/execute client [:sadd "some-set" "a" "b" "c"])
 (into #{} (reddis/execute client [:smembers "some-set"])) ;; => #{"a" "b" "c"}
 
 
 ;; pipelining:
-
 (redis/execute-pipeline client [[:set "a" "1"]
                                 [:set "b" "2"]
                                 [:set "c" "3"]])
 
-(redis/execute client [:mget "a" "b" "c"] ; =>  ["1" "2" "3"]
+(redis/execute client [:mget "a" "b" "c"]) ; =>  ["1" "2" "3"]
+
+;; transactions
+(redis/transact client [[:set "a" "1"]
+                        [:set "b" "2"]
+                        [:set "c" "3"]])
+
+(redis/execute client [:mget "a" "b" "c"]) ; =>  ["1" "2" "3"]
 
 
 ;; to help with building keys, a `key` function is provided:
 
 (redis/key "some" :cool "stuff" ) ;; => "some:cool:stuff"
 (redis/key :my.domain/thing) ;; => "my.domain/thing"
+
+;; this way you can do things like this:
+
+(redis/execute-pipeline [[:get (redis/key ::widgets some-id)]
+                         [:hmgetall (redis/key ::counters)]])
  ```
 ##### 'Tokens' in commands
 
