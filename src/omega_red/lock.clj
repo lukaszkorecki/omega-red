@@ -16,7 +16,6 @@
 (def ^:const renew-script
   (slurp (io/resource "locks-scripts/renew.lua")))
 
-
 ;; XXX: becaue EVAL doesn't get auto-prefixed prefixed in omega-red we have to do it manually
 (defn acquire*
   [conn {:keys [lock-key lock-id expiry-ms acquire-timeout-ms acquire-resolution-ms]}]
@@ -66,15 +65,15 @@
 
 ;; TODO: move to map-as-component to drop dependency on component?
 (defrecord RedisLock
-    [conn ;; injected
-     lock-key ;; shared key to 'lock' on
-     expiry-ms ;; how long to keep the lock
-     acquire-timeout-ms ;; how long to wait for the lock
-     acquire-resolution-ms ;; how often to check for the lock
+  [conn ;; injected
+   lock-key ;; shared key to 'lock' on
+   expiry-ms ;; how long to keep the lock
+   acquire-timeout-ms ;; how long to wait for the lock
+   acquire-resolution-ms ;; how often to check for the lock
 
      ;; derived starte
-     lock-id ;; unique identifier for this lock holder
-     ]
+   lock-id ;; unique identifier for this lock holder
+   ]
   component/Lifecycle
   (start [this]
     (assert (:conn this) "missing Jedis connection pool")
