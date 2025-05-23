@@ -37,35 +37,47 @@
   (testing "sequential acquire + release"
     (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
     (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
-    (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
-    (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
-    (is (false? (redis-lock/acquire (:lock-3 @tu/sys))))
 
-    (is (true? (redis-lock/release (:lock-1 @tu/sys))))
-    (is (true? (redis-lock/acquire (:lock-2 @tu/sys))))))
+    (testing "lock data is in Redis"
+      (is (= ["locking-test:my-cool-op"]
+             (redis/execute (:conn-1 @tu/sys) [:keys "*"]))))
+
+    (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
+
+    (testing "nobody else can acquire"
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire (:lock-3 @tu/sys)))))
+
+    (testing "relase + steal"
+      (is (true? (redis-lock/release (:lock-1 @tu/sys))))
+      (is (true? (redis-lock/acquire (:lock-2 @tu/sys)))))))
 
 (deftest acquire-renew-release-test
   (testing "sequential acquire + release"
     (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
-    (is (false? @(future (redis-lock/acquire (:lock-2 @tu/sys)))))
-    (is (false? @(future (redis-lock/acquire (:lock-3 @tu/sys)))))
-
-    (is (= ["locking-test:my-cool-op"]
-           (redis/execute (:conn-1 @tu/sys) [:keys "*"])))
+    (is (<= 0 (redis-lock/lock-expiry-in-ms (:lock-1 @tu/sys)) 2000))
+    (testing "sequential but with some concurrency"
+      (is (false? @(future (redis-lock/acquire (:lock-2 @tu/sys)))))
+      (is (false? @(future (redis-lock/acquire (:lock-3 @tu/sys))))))
 
     (is (= (redis-lock/get-id (:lock-1 @tu/sys))
            (redis-lock/get-lock-holder-id (:lock-1 @tu/sys)))))
 
   (testing "just before we expire the lock, we renew it"
-    (Thread/sleep 1500)
-    (is (true? (redis-lock/acquire (:lock-1 @tu/sys)))) ;; still valid
+    (is (<= (redis-lock/lock-expiry-in-ms (:lock-1 @tu/sys)) 1500))
+    (Thread/sleep 1000)
+    (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys)))) ;; not expired yet
+
     (is (true? (redis-lock/renew (:lock-1 @tu/sys))))
-    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
-    (is (false? (redis-lock/acquire (:lock-3 @tu/sys)))))
+    (is (<= 0 (redis-lock/lock-expiry-in-ms (:lock-1 @tu/sys)) 2000))
+    (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
-  (testing "we manually release the lock"
-    (is (true? (redis-lock/release (:lock-1 @tu/sys))))
+    (testing "still can't be acquired"
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire (:lock-3 @tu/sys))))))
 
+  (testing "we let the lease expire"
+    (Thread/sleep 2000)
     (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
     (testing "lock can be acquired again"
@@ -75,9 +87,7 @@
              (redis-lock/get-id (:lock-2 @tu/sys)))))
 
     (testing "lock can't be acquired since its held"
-
       (is (false? (redis-lock/acquire (:lock-1 @tu/sys))))
-
       (is (true? (redis-lock/acquire (:lock-2 @tu/sys))))
 
       (testing "We let the lock expire"
@@ -91,10 +101,9 @@
                                        (pmap (fn [lock-component-key-name]
                                                [lock-component-key-name
                                                 (do
-                                                  (let [res (redis-lock/acquire (get @tu/sys lock-component-key-name))]
-                                                    ;; introduce jitter
-                                                    (Thread/sleep ^long (rand-int 200))
-                                                    res))])
+                                                  ;; introduce jitter
+                                                  (Thread/sleep ^long (rand-int 200))
+                                                  (redis-lock/acquire (get @tu/sys lock-component-key-name)))])
                                              [:lock-1 :lock-2 :lock-3])))]
 
     (testing "only one connection acquires the lock"

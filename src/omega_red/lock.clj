@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [com.stuartsierra.component :as component]
             [clojure.java.io :as io]
-            [omega-red.redis :as redis]))
+            [omega-red.redis :as redis])
+  (:import [java.time Instant]))
 
 ;; Implementation
 ;; Lua scripts to guarantee atomicty, although we could use transactions perhaps?
@@ -53,6 +54,11 @@
       (throw (ex-info "wtf we have multiple lock holders" {:lock-key lock-key})))
     (first res)))
 
+(defn lock-expiry-in-ms* [conn {:keys [lock-key]}]
+  (when-let [expire-ts (redis/execute conn [:pexpiretime lock-key])]
+    (let [now (System/currentTimeMillis)]
+      (- expire-ts now))))
+
 ;; Component
 
 (defprotocol RedLock
@@ -61,19 +67,20 @@
   (release [this] "Release the lock. Returns true if released, false otherwise.")
   (get-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
   (get-lock-holder-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
-  (is-lock-holder? [this] "Check if this instance is the lock holder. Returns true if it is, false otherwise."))
+  (is-lock-holder? [this] "Check if this instance is the lock holder. Returns true if it is, false otherwise.")
+  (lock-expiry-in-ms [this] "Returns number of milliseconds until the lock expires. Nil if lock doesn't exist"))
 
 ;; TODO: move to map-as-component to drop dependency on component?
 (defrecord RedisLock
-  [conn ;; injected
-   lock-key ;; shared key to 'lock' on
-   expiry-ms ;; how long to keep the lock
-   acquire-timeout-ms ;; how long to wait for the lock
-   acquire-resolution-ms ;; how often to check for the lock
+    [conn ;; injected
+     lock-key ;; shared key to 'lock' on
+     expiry-ms ;; how long to keep the lock
+     acquire-timeout-ms ;; how long to wait for the lock
+     acquire-resolution-ms ;; how often to check for the lock
 
      ;; derived starte
-   lock-id ;; unique identifier for this lock holder
-   ]
+     lock-id ;; unique identifier for this lock holder
+     ]
   component/Lifecycle
   (start [this]
     (assert (:conn this) "missing Jedis connection pool")
@@ -104,7 +111,10 @@
 
   (is-lock-holder? [this]
     (let [lock-holder-id (get-lock-holder-id* conn this)]
-      (= (:lock-id this) lock-holder-id))))
+      (= (:lock-id this) lock-holder-id)))
+
+  (lock-expiry-in-ms [this]
+    (lock-expiry-in-ms* conn this)))
 
 (def ^:private default-expiry-ms
   (* 60 1000)) ;; 1 minute
