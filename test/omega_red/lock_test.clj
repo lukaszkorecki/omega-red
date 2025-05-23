@@ -97,14 +97,16 @@
         (is (nil? (redis-lock/get-lock-holder-id (:lock-2 @tu/sys))))))))
 
 (deftest concurrent-locking-test
-  (let [try-concurrent-acquire (fn [] (doall
-                                       (pmap (fn [lock-component-key-name]
-                                               [lock-component-key-name
-                                                (do
-                                                  ;; introduce jitter
-                                                  (Thread/sleep ^long (rand-int 200))
-                                                  (redis-lock/acquire (get @tu/sys lock-component-key-name)))])
-                                             [:lock-1 :lock-2 :lock-3])))]
+  (let [do-work (fn [lock-component-key-name]
+                  [lock-component-key-name
+                   (do
+                     ;; introduce jitter
+                     (Thread/sleep ^long (rand-int 200))
+                     (when (redis-lock/acquire (get @tu/sys lock-component-key-name))
+                       (Thread/sleep 1000)
+                       (redis-lock/release (get @tu/sys lock-component-key-name))))])
+        try-concurrent-acquire (fn [] (doall
+                                       (pmap do-work [:lock-1 :lock-2 :lock-3])))]
 
     (testing "only one connection acquires the lock"
       (testing "attempt 1"
@@ -120,3 +122,14 @@
       (Thread/sleep 2000)
       (testing "final attempt"
         (is (= 1 (count (filter #(= true (second %)) (try-concurrent-acquire)))))))))
+
+(deftest with-lock-macro-test
+  (let [do-work (fn [lock-component-key-name]
+                  (Thread/sleep ^long (rand-int 200))
+                  (redis-lock/with-lock (get @tu/sys lock-component-key-name)
+                    (Thread/sleep 1000)
+                    ::work-done))]
+    (is (= :x
+           (doall
+            (pmap do-work
+                  [:lock-1 :lock-2 :lock-3]))))))

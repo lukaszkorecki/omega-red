@@ -131,7 +131,7 @@
                :or {expiry-ms default-expiry-ms
                     acquire-timeout-ms default-acquire-timeout-ms
                     acquire-resolution-ms default-acquire-resolution-ms}}]
-  {:pre [(string? lock-key)
+  {:pre [(not (str/blank? lock-key))
          (not (str/blank? lock-key))
          (> expiry-ms acquire-resolution-ms 0)
          (> acquire-timeout-ms acquire-resolution-ms 0)]}
@@ -140,3 +140,13 @@
                    :expiry-ms expiry-ms
                    :acquire-timeout-ms acquire-timeout-ms
                    :acquire-resolution-ms acquire-resolution-ms}))
+
+(defmacro with-lock [lock & body]
+  `(if (acquire ~lock)
+     (let [ret# (try
+                  ~@body
+                  (finally
+                    (release ~lock)))]
+       {:status ::acquired-and-released
+        :result ret#})
+     {:status ::not-acquired}))
