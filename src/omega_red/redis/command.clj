@@ -48,10 +48,10 @@
                                  has-variadic-key-args?
                                  has-block-key-args?] :as _spec}]]
               (let [prefixer-fn (cond
-                                  has-only-one-key-arg? first-key-prefixer
-                                  (and is-key-first-arg? has-block-key-args?) block-key-prefixer
-                                  (and is-key-first-arg? has-variadic-key-args?) first-key-variadic-prefixer
-                                  :else no-op-prefixer)]
+                                 has-only-one-key-arg? first-key-prefixer
+                                 (and is-key-first-arg? has-block-key-args?) block-key-prefixer
+                                 (and is-key-first-arg? has-variadic-key-args?) first-key-variadic-prefixer
+                                 :else no-op-prefixer)]
                 (hash-map cmd-kw prefixer-fn))))
        (into {})))
 

@@ -13,7 +13,6 @@
 (use-fixtures :each (fn [test]
                       (tu/with-test-system (fn []
                                              (reset! state 0)
-                                             (tu/clean-up-all-data (tu/conn))
                                              (test)))))
 
 (deftest fetch-or-get-test

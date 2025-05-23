@@ -13,10 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [test]
-                      (tu/with-test-system (fn []
-                                             (tu/clean-up-all-data (tu/conn))
-                                             (test)))))
+(use-fixtures :each tu/with-test-system)
 
 (defn exec-stop-and-wait [^ExecutorService executor num-s]
   (.shutdown executor)

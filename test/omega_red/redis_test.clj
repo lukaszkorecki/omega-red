@@ -4,10 +4,7 @@
    [omega-red.redis :as redis]
    [omega-red.test-util :as tu]))
 
-(use-fixtures :each (fn [test]
-                      (tu/with-test-system (fn []
-                                             (tu/clean-up-all-data (tu/conn))
-                                             (test)))))
+(use-fixtures :each tu/with-test-system)
 
 (deftest basic-ops-test
   (testing "basic get set del"
