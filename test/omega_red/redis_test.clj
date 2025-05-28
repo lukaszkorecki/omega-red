@@ -114,3 +114,10 @@
   (testing "validation"
     (is (thrown-with-msg? AssertionError #"Assert failed:"
                           (redis/key :foo :bar :baz 10)))))
+
+
+(deftest all-features-in-one-test
+  (is (= ["OK" {:hello "foo"}]
+         (redis/execute-pipeline (tu/prefixed-conn)
+                                 [[:set "test.some.key" {:hello "foo"} :ex 10]
+                                  [:get "test.some.key"]]))))
