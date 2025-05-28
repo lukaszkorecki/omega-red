@@ -112,6 +112,10 @@
     (is (= [:set "foo" "bar" "EX" 10]
            (redis.cmd/process {} [:set "foo" "bar" :EX 10]))))
 
+  (testing "expiration in SET - using upper case keyword + key prefix"
+    (is (= [:set "bananas:foo" "bar" "EX" 10]
+           (redis.cmd/process {:key-prefix "bananas"} [:set "foo" "bar" :EX 10]))))
+
   (testing "sort with BY and DESC as lower case keywords"
     (is (= [:sort "foo" "BY" "*" "DESC"]
            (redis.cmd/process {} [:sort "foo" :by "*" :desc])))))
