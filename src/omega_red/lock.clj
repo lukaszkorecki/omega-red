@@ -2,8 +2,9 @@
   (:require [clojure.string :as str]
             [com.stuartsierra.component :as component]
             [clojure.java.io :as io]
-            [omega-red.redis :as redis])
-  (:import [java.time Instant]))
+            [omega-red.redis :as redis]))
+
+(def ^:private not-blank? (complement str/blank?))
 
 ;; Implementation
 ;; Lua scripts to guarantee atomicty, although we could use transactions perhaps?
@@ -18,8 +19,26 @@
   (slurp (io/resource "locks-scripts/renew.lua")))
 
 ;; XXX: becaue EVAL doesn't get auto-prefixed prefixed in omega-red we have to do it manually
-(defn acquire*
+(defn try-acquire*
+  "Try acquiring a lock, doesn't use timeouts - so it either acquires the lock or fails immediately.
+   Returns true if acquired, false otherwise."
+  [conn {:keys [lock-key lock-id expiry-ms]}]
+  (let [prefixed-lock-key (redis/key (:key-prefix conn) lock-key)
+        result (redis/execute conn [:eval lock-script 1 prefixed-lock-key lock-id (str expiry-ms)])]
+    ;; is acquired?
+    (and (number? result) (pos? result))))
+
+(defn try-acquire-with-timeout*
+  "Try acquiring a lock, with a timeout options"
   [conn {:keys [lock-key lock-id expiry-ms acquire-timeout-ms acquire-resolution-ms]}]
+
+  {:pre [(not-blank? lock-key)
+         (not-blank? lock-id)
+
+         (pos? expiry-ms)
+         (pos? acquire-timeout-ms)
+         (pos? acquire-resolution-ms)]}
+  (tap> {:trying-with acquire-timeout-ms})
   (let [prefixed-lock-key (redis/key (:key-prefix conn) lock-key)]
     (loop [timeout acquire-timeout-ms]
       (let [result (redis/execute conn [:eval lock-script 1 prefixed-lock-key lock-id (str expiry-ms)])
@@ -62,7 +81,7 @@
 ;; Component
 
 (defprotocol RedLock
-  (acquire [this] "Acquire the lock. Returns true if acquired, false otherwise.")
+  (acquire [this] [this opts] "Acquire the lock. Returns true if acquired, false otherwise.")
   (renew [this] "Renew the lock. Returns true if renewed, false otherwise.")
   (release [this] "Release the lock. Returns true if released, false otherwise.")
   (get-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
@@ -95,7 +114,16 @@
 
   RedLock
   (acquire [this]
-    (acquire* conn this))
+    (acquire this {:with-timeout? true}))
+
+  (acquire [this {:keys [with-timeout? acquire-timeout-ms]
+                  :or {with-timeout? true} :as _args}]
+    (tap> {:with-timeout? with-timeout? :acquire-timeout-ms acquire-timeout-ms})
+
+    (if with-timeout?
+      (try-acquire-with-timeout* conn (cond-> this
+                                        acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms)))
+      (try-acquire* conn this)))
 
   (renew [this]
     (renew* conn this))
@@ -142,11 +170,11 @@
                    :acquire-resolution-ms acquire-resolution-ms}))
 
 (defmacro with-lock [lock & body]
-  `(if (acquire ~lock)
-     (let [ret# (try
-                  ~@body
-                  (finally
-                    (release ~lock)))]
-       {:status ::acquired-and-released
-        :result ret#})
-     {:status ::not-acquired}))
+  `(try
+     (if (acquire ~lock)
+       (let [ret# (do ~@body)]
+         {:status ::acquired-and-released
+          :result ret#})
+       {:status ::not-acquired})
+     (finally
+       (release ~lock))))

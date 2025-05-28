@@ -10,7 +10,6 @@
   {:conn-1 (redis.client/create (merge tu/redis-config {:key-prefix "locking-test"}))
    :conn-2 (redis.client/create (merge tu/redis-config {:key-prefix "locking-test"}))
    :conn-3 (redis.client/create (merge tu/redis-config {:key-prefix "locking-test"}))
-
    :lock-1 (component/using
             (redis-lock/create {:lock-key "my-cool-op"
                                 :expiry-ms 2000
@@ -36,7 +35,7 @@
 (deftest simple-acquire-test
   (testing "sequential acquire + release"
     (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
-    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
+    (is (true? (redis-lock/acquire (:lock-1 @tu/sys) {:with-timeout? false})))
 
     (testing "lock data is in Redis"
       (is (= ["locking-test:my-cool-op"]
@@ -45,12 +44,29 @@
     (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
     (testing "nobody else can acquire"
-      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
-      (is (false? (redis-lock/acquire (:lock-3 @tu/sys)))))
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys) {:with-timeout? false})))
+      (is (false? (redis-lock/acquire (:lock-3 @tu/sys) {:with-timeout? false}))))
 
     (testing "relase + steal"
       (is (true? (redis-lock/release (:lock-1 @tu/sys))))
-      (is (true? (redis-lock/acquire (:lock-2 @tu/sys)))))))
+      (is (true? (redis-lock/acquire (:lock-2 @tu/sys) {:with-timeout? false}))))))
+
+(deftest custom-acquire-timeout-test
+  (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
+  (let [run-time-ms (tu/make-timer)]
+
+    (testing "default timeout"
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
+
+      (is (<= 300 (run-time-ms) 500)
+          "acquire should take less than 500ms but more than 300 since there's a lock held already"))
+
+    (testing "we can customize lock acquisition timeout overriding instance setting"
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys)
+                                      {:acquire-timeout-ms 1000})))
+
+      (is (<= 500 (run-time-ms) 1500)
+          "acquire should take more than 500ms, but less than 1000ms, since we set the timeout to 1000ms and we already tried once with a shorter timeout"))))
 
 (deftest acquire-renew-release-test
   (testing "sequential acquire + release"
@@ -99,37 +115,37 @@
 (deftest concurrent-locking-test
   (let [do-work (fn [lock-component-key-name]
                   [lock-component-key-name
-                   (do
-                     ;; introduce jitter
-                     (Thread/sleep ^long (rand-int 200))
-                     (when (redis-lock/acquire (get @tu/sys lock-component-key-name))
-                       (Thread/sleep 1000)
-                       (redis-lock/release (get @tu/sys lock-component-key-name))))])
+                   (when (redis-lock/acquire (get @tu/sys lock-component-key-name))
+                     (Thread/sleep 1000)
+                     (redis-lock/release (get @tu/sys lock-component-key-name)))])
         try-concurrent-acquire (fn [] (doall
                                        (pmap do-work [:lock-1 :lock-2 :lock-3])))]
 
     (testing "only one connection acquires the lock"
       (testing "attempt 1"
-        (is (= 1 (count (filter #(= true (second %)) (try-concurrent-acquire))))))
+        (is (= 1 (count (filter #(true? (second %)) (try-concurrent-acquire))))))
 
       (testing "attempt 2"
-        (is (= 1 (count (filter #(= true (second %)) (try-concurrent-acquire))))))
+        (is (= 1 (count (filter #(true? (second %)) (try-concurrent-acquire))))))
 
       (testing "attempt 3"
-        (is (= 1 (count (filter #(= true (second %)) (try-concurrent-acquire)))))))
+        (is (= 1 (count (filter #(true? (second %)) (try-concurrent-acquire)))))))
 
     (testing "we let the lock expire and try again"
       (Thread/sleep 2000)
       (testing "final attempt"
-        (is (= 1 (count (filter #(= true (second %)) (try-concurrent-acquire)))))))))
+        (is (= 1 (count (filter #(true? (second %)) (try-concurrent-acquire)))))))))
 
 (deftest with-lock-macro-test
   (let [do-work (fn [lock-component-key-name]
-                  (Thread/sleep ^long (rand-int 200))
                   (redis-lock/with-lock (get @tu/sys lock-component-key-name)
                     (Thread/sleep 1000)
-                    ::work-done))]
-    (is (= :x
-           (doall
-            (pmap do-work
-                  [:lock-1 :lock-2 :lock-3]))))))
+                    "we're done"))]
+    (is (= [{:status :omega-red.lock/acquired-and-released :result "we're done"}
+            {:status :omega-red.lock/not-acquired}
+            {:status :omega-red.lock/not-acquired}]
+           (->> [:lock-1 :lock-2 :lock-3]
+                (pmap do-work)
+                doall
+
+                (sort-by :status))))))

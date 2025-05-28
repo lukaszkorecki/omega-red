@@ -38,3 +38,9 @@
         (when cleanup?
           (cleanup-all-data (conn)))
         (component/stop @sys)))))
+
+
+(defn make-timer []
+  (let [start (System/currentTimeMillis)]
+    (fn []
+      (- (System/currentTimeMillis) ^long start))))

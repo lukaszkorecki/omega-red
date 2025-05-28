@@ -1,4 +1,4 @@
-(defproject org.clojars.lukaszkorecki/omega-red "2.3.1-SNAPSHOT"
+(defproject org.clojars.lukaszkorecki/omega-red "2.5.0-SNAPSHOT"
   :description "Redis client for Cloure, based on Jedis, with optional Component support"
   :url "https://github.com/nomnom-insights/nomnom.omega-red"
   :license {:name "MIT License"
@@ -17,6 +17,9 @@
                  [com.cognitect/transit-clj "1.0.333"]]
 
   :global-vars {*warn-on-reflection* true}
+  ;; include whole stack traces
+  :jvm-opts ["-XX:-OmitStackTraceInFastThrow"]
+
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "2.0.17"]
                                   [org.clojure/tools.logging "1.3.0"]
