@@ -226,6 +226,7 @@ Options supported by `omega-red.lock/create`:
 The api for working with locks is a set of functions:
 
 - `(acquire lock)` - acquire the lock for `expiry-ms` milliseconds, returns `true` if the lock was acquired, `false` otherwise after `acquire-timeout-ms` milliseconds is reached (polled every `acquire-resolution-ms` milliseconds)
+  - `(acquire lock {:with-timeout? :acquire-timeout-ms})` - allows for more fine grained control when trying to lock: we can disable timeout and bail out immediately if the lock is not available, or we can set a custom timeout for acquiring the lock overriding the default `:acquire-timeout-ms` value
 - `(release lock)` - immediately release the lock, always returns `true`
 - `(renew lock)` - if the lock instance is the holder, it can be renewed, this will extend the lock expiry time to `expiry-ms` milliseconds from now
 
@@ -265,7 +266,7 @@ For best practices, you want to acquire the lock just long enough to do the work
 (lock/with-lock lock
   ;; do the db ops here
   )
-;; => {:status ::lock/released :result ...}  when work was performed
+;; => {:status ::lock/acquired-and-released :result ...}  when work was performed
 ;; or {:status ::lock/not-acquired }  if the lock was not acquired
 ;; or exception will be thrown if lock couldn't be acquired
 
