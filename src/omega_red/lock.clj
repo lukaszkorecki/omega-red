@@ -38,7 +38,6 @@
          (pos? expiry-ms)
          (pos? acquire-timeout-ms)
          (pos? acquire-resolution-ms)]}
-  (tap> {:trying-with acquire-timeout-ms})
   (let [prefixed-lock-key (redis/key (:key-prefix conn) lock-key)]
     (loop [timeout acquire-timeout-ms]
       (let [result (redis/execute conn [:eval lock-script 1 prefixed-lock-key lock-id (str expiry-ms)])
@@ -118,8 +117,6 @@
 
   (acquire [this {:keys [with-timeout? acquire-timeout-ms]
                   :or {with-timeout? true} :as _args}]
-    (tap> {:with-timeout? with-timeout? :acquire-timeout-ms acquire-timeout-ms})
-
     (if with-timeout?
       (try-acquire-with-timeout* conn (cond-> this
                                         acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms)))

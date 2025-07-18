@@ -72,8 +72,6 @@
                                                               (get token-variants arg arg))
                                                             args))))]
 
-                (when (= :set cmd-kw)
-                  (tap> {:set token-variants}))
                 (hash-map cmd-kw converter-fn))))
        (into {})))
 
