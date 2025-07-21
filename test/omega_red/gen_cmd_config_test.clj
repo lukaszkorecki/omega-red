@@ -1,5 +1,5 @@
 (ns omega-red.gen-cmd-config-test
-  (:require [clojure.test :refer [deftest testing is use-fixtures]]
+  (:require [clojure.test :refer [deftest is]]
             [omega-red.gen-cmd-config :as gcc]))
 
 (deftest get-spec-test

@@ -37,7 +37,7 @@
         (is (= "5" (stateful))))))
 
   (testing "different data types"
-    (let [get-or-fetch #(redis.cache/get-or-fetch (tu/conn) {:fetch (fn [] (str (stateful)))
+    (let [get-or-fetch #(redis.cache/get-or-fetch (tu/conn) {:fetch (fn [] (stateful))
                                                              :cache-get (fn cache-get' [conn]
                                                                           (redis/execute conn [:hget "testing:2" "foo"]))
                                                              :cache-set (fn cache-set' [conn fetch-result]
