@@ -20,8 +20,8 @@
 ### Non Goals
 
 - no support for worker queue or pub/sub abstraction
-- no implementation of Redis commands as functions
-- no locking or other complex operations built on top of Redis
+- no special support for converting from Redis data structures to Clojure data structures
+- no support for Redis Streams, Lua scripts or other advanced features
 
 > [!NOTE]
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
@@ -225,22 +225,24 @@ Options supported by `omega-red.lock/create`:
 
 The api for working with locks is a set of functions:
 
-- `(acquire lock)` - acquire the lock for `expiry-ms` milliseconds, returns `true` if the lock was acquired, `false` otherwise after `acquire-timeout-ms` milliseconds is reached (polled every `acquire-resolution-ms` milliseconds)
-  - `(acquire lock {:with-timeout? :acquire-timeout-ms})` - allows for more fine grained control when trying to lock: we can disable timeout and bail out immediately if the lock is not available, or we can set a custom timeout for acquiring the lock overriding the default `:acquire-timeout-ms` value
+- `(acquire lock)` - acquire the lock for `expiry-ms` milliseconds, returns `true` if the lock was acquired, `false` otherwise. This is a non-blocking call.
+- `(acquire-with-timeout lock)` - same as `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
+  - `(acquire-with-timeout lock {:acquire-timeout-ms 5000})` - allows for overriding the default `:acquire-timeout-ms` value.
 - `(release lock)` - immediately release the lock, always returns `true`
 - `(renew lock)` - if the lock instance is the holder, it can be renewed, this will extend the lock expiry time to `expiry-ms` milliseconds from now
 
 
 A set of functions used to inspect the state of lock can be used:
 
-- `(is-lock-holder lock)` - check if current instance is the lock holder
+- `(is-lock-holder? lock)` - check if current instance is the lock holder
 - `(lock-expiry-in-ms lock)` - check how long the lock will be held for, in milliseconds
 
 
 For best practices, you want to acquire the lock just long enough to do the work while the lock is held, and release it as soon as possible. If your code anticipates work taking longer than initial expiry, use `renew` to extend the lease.
 
+The locks are re-entrant, meaning a lock holder can acquire the same lock multiple times. Each `acquire` call should be matched with a `release` call.
 
-`with-lock` macro implements simple `acquire` + `finally release` pattern. It will return a map of `{:status .. :?result }`
+`with-lock` macro implements simple `acquire-with-timeout` + `finally release` pattern. It will return a map of `{:status .. :?result }`
 
 ```clojure
 (require '[omega-red.redis.client]
@@ -248,14 +250,14 @@ For best practices, you want to acquire the lock just long enough to do the work
 
 (def sys-map
   {:conn (omega-red.client/create {:uri "redis://localhost:6379"})
-   :lock (cmponent/using
+   :lock (component/using
           (omega-red.lock/create {:lock-key "my-db-migration-sync-process"})
           [:conn])})
 
 ;; .... get the system working....
 
-(let [{:keys [lock]} sys-map]
-  (when (omega-red.lock/acquire lock)
+(let [{:keys [lock]} @sys]
+  (when (omega-red.lock/acquire-with-timeout lock)
     (try
       ;; do your db migration here
       (finally
@@ -266,17 +268,16 @@ For best practices, you want to acquire the lock just long enough to do the work
 (lock/with-lock lock
   ;; do the db ops here
   )
-;; => {:status ::lock/acquired-and-released :result ...}  when work was performed
-;; or {:status ::lock/not-acquired }  if the lock was not acquired
-;; or exception will be thrown if lock couldn't be acquired
+;; => {:status :omega-red.lock/acquired-and-released :result ...}  when work was performed
+;; or {:status :omega-red.lock/not-acquired }  if the lock was not acquired
 
 
 ;; Usage without component
 
 (let [jedis (Jedis. "redis://localhost:6379")
       lock (-> (omega-red.lock/create {:lock-key "my-db-migration-sync-process"})
-               (assoc :conn jedis :lock-id (random-uuid)})]
-  (when (omega-red.lock/acquire lock)
+               (assoc :conn jedis :lock-id (str "my-lock-" (random-uuid))))]
+  (when (omega-red.lock/acquire-with-timeout lock)
     (try
       ;; do your db migration here
       (finally
