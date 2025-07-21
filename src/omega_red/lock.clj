@@ -4,6 +4,17 @@
             [clojure.java.io :as io]
             [omega-red.redis :as redis]))
 
+(defprotocol RedLock
+  (acquire [this] [this opts] "Acquire the lock. Returns true if acquired, false otherwise.")
+  (acquire-with-timeout [this] [this opts] "Like `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
+   If the lock is not acquired within that time, returns false.")
+  (renew [this] "Renew the lock. Returns true if renewed, false otherwise.")
+  (release [this] "Release the lock. Returns true if released, false otherwise.")
+  (get-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
+  (get-lock-holder-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
+  (is-lock-holder? [this] "Check if this instance is the lock holder. Returns true if it is, false otherwise.")
+  (lock-expiry-in-ms [this] "Returns number of milliseconds until the lock expires. Nil if lock doesn't exist"))
+
 (def ^:private not-blank? (complement str/blank?))
 
 ;; Implementation
@@ -48,7 +59,7 @@
           (if (pos? (- timeout acquire-resolution-ms))
             (do
               (try
-                (Thread/sleep acquire-resolution-ms)
+                (Thread/sleep ^long acquire-resolution-ms)
                 (catch InterruptedException _e
                   ::no-op))
               (recur (- timeout acquire-resolution-ms)))
@@ -79,14 +90,7 @@
 
 ;; Component
 
-(defprotocol RedLock
-  (acquire [this] [this opts] "Acquire the lock. Returns true if acquired, false otherwise.")
-  (renew [this] "Renew the lock. Returns true if renewed, false otherwise.")
-  (release [this] "Release the lock. Returns true if released, false otherwise.")
-  (get-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
-  (get-lock-holder-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
-  (is-lock-holder? [this] "Check if this instance is the lock holder. Returns true if it is, false otherwise.")
-  (lock-expiry-in-ms [this] "Returns number of milliseconds until the lock expires. Nil if lock doesn't exist"))
+;; TODO: enable use without a component?
 
 ;; TODO: move to map-as-component to drop dependency on component?
 (defrecord RedisLock
@@ -113,14 +117,15 @@
 
   RedLock
   (acquire [this]
-    (acquire this {:with-timeout? true}))
+    (try-acquire* conn this))
 
-  (acquire [this {:keys [with-timeout? acquire-timeout-ms]
-                  :or {with-timeout? true} :as _args}]
-    (if with-timeout?
-      (try-acquire-with-timeout* conn (cond-> this
-                                        acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms)))
-      (try-acquire* conn this)))
+  (acquire-with-timeout [this]
+    (acquire-with-timeout this {}))
+
+  (acquire-with-timeout [this {:keys [acquire-timeout-ms]}]
+    (try-acquire-with-timeout* conn (cond-> this
+                                      ;; override default acquire timeout if passed
+                                      acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms))))
 
   (renew [this]
     (renew* conn this))
@@ -168,7 +173,7 @@
 
 (defmacro with-lock [lock & body]
   `(try
-     (if (acquire ~lock)
+     (if (acquire-with-timeout ~lock)
        (let [ret# (do ~@body)]
          {:status ::acquired-and-released
           :result ret#})

@@ -35,7 +35,7 @@
 (deftest simple-acquire-test
   (testing "sequential acquire + release"
     (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
-    (is (true? (redis-lock/acquire (:lock-1 @tu/sys) {:with-timeout? false})))
+    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
 
     (testing "lock data is in Redis"
       (is (= ["locking-test:my-cool-op"]
@@ -44,37 +44,37 @@
     (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
     (testing "nobody else can acquire"
-      (is (false? (redis-lock/acquire (:lock-2 @tu/sys) {:with-timeout? false})))
-      (is (false? (redis-lock/acquire (:lock-3 @tu/sys) {:with-timeout? false}))))
+      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire (:lock-3 @tu/sys)))))
 
     (testing "relase + steal"
       (is (true? (redis-lock/release (:lock-1 @tu/sys))))
-      (is (true? (redis-lock/acquire (:lock-2 @tu/sys) {:with-timeout? false}))))))
+      (is (true? (redis-lock/acquire (:lock-2 @tu/sys)))))))
 
 (deftest custom-acquire-timeout-test
   (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
   (let [run-time-ms (tu/make-timer)]
 
     (testing "default timeout"
-      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire-with-timeout (:lock-2 @tu/sys))))
 
       (is (<= 300 (run-time-ms) 500)
           "acquire should take less than 500ms but more than 300 since there's a lock held already"))
 
     (testing "we can customize lock acquisition timeout overriding instance setting"
-      (is (false? (redis-lock/acquire (:lock-2 @tu/sys)
-                                      {:acquire-timeout-ms 1000})))
+      (is (false? (redis-lock/acquire-with-timeout (:lock-2 @tu/sys)
+                                                   {:acquire-timeout-ms 1000})))
 
       (is (<= 500 (run-time-ms) 1500)
           "acquire should take more than 500ms, but less than 1000ms, since we set the timeout to 1000ms and we already tried once with a shorter timeout"))))
 
 (deftest acquire-renew-release-test
   (testing "sequential acquire + release"
-    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
+    (is (true? (redis-lock/acquire-with-timeout (:lock-1 @tu/sys))))
     (is (<= 0 (redis-lock/lock-expiry-in-ms (:lock-1 @tu/sys)) 2000))
     (testing "sequential but with some concurrency"
-      (is (false? @(future (redis-lock/acquire (:lock-2 @tu/sys)))))
-      (is (false? @(future (redis-lock/acquire (:lock-3 @tu/sys))))))
+      (is (false? @(future (redis-lock/acquire-with-timeout (:lock-2 @tu/sys)))))
+      (is (false? @(future (redis-lock/acquire-with-timeout (:lock-3 @tu/sys))))))
 
     (is (= (redis-lock/get-id (:lock-1 @tu/sys))
            (redis-lock/get-lock-holder-id (:lock-1 @tu/sys)))))
@@ -89,22 +89,22 @@
     (is (true? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
     (testing "still can't be acquired"
-      (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
-      (is (false? (redis-lock/acquire (:lock-3 @tu/sys))))))
+      (is (false? (redis-lock/acquire-with-timeout (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire-with-timeout (:lock-3 @tu/sys))))))
 
   (testing "we let the lease expire"
     (Thread/sleep 2000)
     (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
 
     (testing "lock can be acquired again"
-      (is (true? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (true? (redis-lock/acquire-with-timeout (:lock-2 @tu/sys))))
 
       (is (= (redis-lock/get-lock-holder-id (:lock-1 @tu/sys))
              (redis-lock/get-id (:lock-2 @tu/sys)))))
 
     (testing "lock can't be acquired since its held"
-      (is (false? (redis-lock/acquire (:lock-1 @tu/sys))))
-      (is (true? (redis-lock/acquire (:lock-2 @tu/sys))))
+      (is (false? (redis-lock/acquire-with-timeout (:lock-1 @tu/sys))))
+      (is (true? (redis-lock/acquire-with-timeout (:lock-2 @tu/sys))))
 
       (testing "We let the lock expire"
         (Thread/sleep 2200)
