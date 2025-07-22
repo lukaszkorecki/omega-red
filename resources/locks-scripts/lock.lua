@@ -1,5 +1,5 @@
 -- Args:
--- 1. lock-key: the key to lock on (KEYS[1]
+-- 1. lock-key: the key to lock on (KEYS[1])
 -- 2. lock-id: the unique identifier for this lock holder (ARGV[1]))
 -- 3. expiry-ms: how long to keep the lock (ARGV[2])
 

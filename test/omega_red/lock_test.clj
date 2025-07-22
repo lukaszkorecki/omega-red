@@ -47,7 +47,7 @@
       (is (false? (redis-lock/acquire (:lock-2 @tu/sys))))
       (is (false? (redis-lock/acquire (:lock-3 @tu/sys)))))
 
-    (testing "relase + steal"
+    (testing "release + steal"
       (is (true? (redis-lock/release (:lock-1 @tu/sys))))
       (is (true? (redis-lock/acquire (:lock-2 @tu/sys)))))))
 

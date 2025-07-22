@@ -29,7 +29,7 @@
 (def ^:const renew-script
   (slurp (io/resource "locks-scripts/renew.lua")))
 
-;; XXX: becaue EVAL doesn't get auto-prefixed prefixed in omega-red we have to do it manually
+;; XXX: because EVAL doesn't get auto-prefixed in omega-red, we have to do it manually
 (defn try-acquire*
   "Try acquiring a lock, doesn't use timeouts - so it either acquires the lock or fails immediately.
    Returns true if acquired, false otherwise."
@@ -80,7 +80,7 @@
   [conn {:keys [lock-key]}]
   (let [res (redis/execute conn [:hkeys lock-key])]
     (when (> (count res) 1)
-      (throw (ex-info "wtf we have multiple lock holders" {:lock-key lock-key})))
+      (throw (ex-info "Unexpected state: multiple lock holders detected for the given lock key." {:lock-key lock-key})))
     (first res)))
 
 (defn lock-expiry-in-ms* [conn {:keys [lock-key]}]
@@ -100,7 +100,7 @@
      acquire-timeout-ms ;; how long to wait for the lock
      acquire-resolution-ms ;; how often to check for the lock
 
-     ;; derived starte
+     ;; derived state
      lock-id ;; unique identifier for this lock holder
      ]
   component/Lifecycle
