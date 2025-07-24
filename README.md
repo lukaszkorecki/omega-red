@@ -334,20 +334,7 @@ However, that doesn't apply to certain commands like `keys` or `scan` - return v
 ;; => ["string" "string"]
 ```
 
-### Keywords in commands
 
-Due to how arguments are processed, commands which have special arguments like `EX` in `SET` or `NOVALUES` in `HSET` will not work as expected when passed as keywords.
-To work around this use strings instead:
-
-
-``` clojure
-;; this won't work:
-
-(r/execute conn [:set "foo" "bar" :ex 10]) ;; => "ERR syntax error"
-
-;; this will:
-(r/execute conn [:set "foo" "bar" "EX" 10]) ;; => "OK"
-```
 
 
 # Changelog
