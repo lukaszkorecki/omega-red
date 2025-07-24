@@ -28,8 +28,8 @@
 ;; see here https://www.site24x7.com/blog/jedis-pool-optimization
 (defn calculate-defaults [{:keys [max-total max-idle min-idle] :as config}]
   (cond-> (update-vals config long)
-    (nil? max-idle) (assoc :max-idle (max 1 (int (/ max-total 2))))
-    (nil? min-idle) (assoc :min-idle (max 1 (int (/ max-total 10))))))
+          (nil? max-idle) (assoc :max-idle (max 1 (int (/ max-total 2))))
+          (nil? min-idle) (assoc :min-idle (max 1 (int (/ max-total 10))))))
 
 (defn pool-config? [x]
   (instance? JedisPoolConfig x))

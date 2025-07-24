@@ -20,8 +20,8 @@
 ### Non Goals
 
 - no support for worker queue or pub/sub abstraction
-- no implementation of Redis commands as functions
-- no locking or other complex operations built on top of Redis
+- no special support for converting from Redis data structures to Clojure data structures
+- no support for Redis Streams, Lua scripts or other advanced features
 
 > [!NOTE]
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
@@ -207,9 +207,86 @@ Example:
                         :fetch-fn #(slurp "http://example.com")
                         :expiry-s 30}))
 ```
+##### Locks
+
+A lock Component is provided. It uses Lua scripts to implement locking and unlocking. Implementation is based on Carmine's and jedis-tools implementation.
+
+> [!NOTE]
+> Redis locks are Good Enough :tm: for most use cases, but they are not perfect. They're really effective when using a single Redis instance, however
+> clustered deployments are not guaranteed to behave correctly. Consider a distributed lock implementation based on Consul, Zookeeper or even Postgres-based optimistic locking
 
 
-##### Usage without Component
+Options supported by `omega-red.lock/create`:
+
+- `:lock-key` - the key to use for the lock, e.g "db-migration" or "widget-data-sync", if client has as `:key-prefix` set, the prefix will be applied to the lock key
+- `:expiry-ms` - the lock expiry time in milliseconds, default is 1 minute, this is the upper bound for how long the lock will be held, even if the process holding it dies
+- `:acquire-timeout-ms` - the time to wait for the lock to be acquired, default is 10 seconds
+- `:acquire-resolution-ms` - the time to wait between attempts to acquire the lock, default is 100ms
+
+The api for working with locks is a set of functions:
+
+- `(acquire lock)` - acquire the lock for `expiry-ms` milliseconds, returns `true` if the lock was acquired, `false` otherwise. This is a non-blocking call.
+- `(acquire-with-timeout lock)` - same as `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
+  - `(acquire-with-timeout lock {:acquire-timeout-ms 5000})` - allows for overriding the default `:acquire-timeout-ms` value.
+- `(release lock)` - immediately release the lock, always returns `true`
+- `(renew lock)` - if the lock instance is the holder, it can be renewed, this will extend the lock expiry time to `expiry-ms` milliseconds from now
+
+
+A set of functions used to inspect the state of lock can be used:
+
+- `(is-lock-holder? lock)` - check if current instance is the lock holder
+- `(lock-expiry-in-ms lock)` - check how long the lock will be held for, in milliseconds
+
+
+For best practices, you want to acquire the lock just long enough to do the work while the lock is held, and release it as soon as possible. If your code anticipates work taking longer than initial expiry, use `renew` to extend the lease.
+
+The locks are re-entrant, meaning a lock holder can acquire the same lock multiple times. Each `acquire` call should be matched with a `release` call.
+
+`with-lock` macro implements simple `acquire-with-timeout` + `finally release` pattern. It will return a map of `{:status .. :?result }`
+
+```clojure
+(require '[omega-red.redis.client]
+         '[omega-red.lock])
+
+(def sys-map
+  {:conn (omega-red.client/create {:uri "redis://localhost:6379"})
+   :lock (component/using
+          (omega-red.lock/create {:lock-key "my-db-migration-sync-process"})
+          [:conn])})
+
+;; .... get the system working....
+
+(let [{:keys [lock]} @sys]
+  (when (omega-red.lock/acquire-with-timeout lock)
+    (try
+      ;; do your db migration here
+      (finally
+        (omega-red.lock/release lock)))))
+
+;; there's a convinient macro for using the lock
+
+(lock/with-lock lock
+  ;; do the db ops here
+  )
+;; => {:status :omega-red.lock/acquired-and-released :result ...}  when work was performed
+;; or {:status :omega-red.lock/not-acquired }  if the lock was not acquired
+
+
+;; Usage without component
+
+(let [jedis (Jedis. "redis://localhost:6379")
+      lock (-> (omega-red.lock/create {:lock-key "my-db-migration-sync-process"})
+               (assoc :conn jedis :lock-id (str "my-lock-" (random-uuid))))]
+  (when (omega-red.lock/acquire-with-timeout lock)
+    (try
+      ;; do your db migration here
+      (finally
+        (omega-red.lock/release lock)))))
+
+```
+
+
+##### Redis client usage without Component
 
 If you can't/don't want to use Component, you can use Omega Red without it. Create an instance of `Jedis` or `JedisPool` and
 pass it to `execute` or `execute-pipeline` functions under `:pool` key:

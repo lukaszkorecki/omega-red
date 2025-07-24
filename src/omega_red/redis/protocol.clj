@@ -2,8 +2,6 @@
   "Deals with Jedis/Redis internal protocol not Clojure protocol"
   (:require
    [omega-red.codec :as codec]
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.string :as str])
   (:import
    [redis.clients.jedis

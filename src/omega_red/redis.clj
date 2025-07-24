@@ -6,6 +6,8 @@
 
 (set! *warn-on-reflection* true)
 
+;; NOTE: this is used, implicitly via map created via omega-red.client/create
+;;       so clj-kondo warning is invalid!
 (defprotocol IRedis
   :extend-via-metadata true
   (execute
