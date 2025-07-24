@@ -34,20 +34,23 @@
 
 (defn serialize [thing]
   (cond
-    (boolean? thing) (str thing)
-    (number? thing) (str thing)
-    (string? thing) thing
+   (boolean? thing) (str thing)
+   (number? thing) (str thing)
+   (string? thing) thing
     ;; XXX: things will blow up if we start passing random Java classes, maybe that's for the best?
-    :else (serialize-clj thing)))
+   :else (serialize-clj thing)))
 
 (defn deserialize [res]
   (cond
-    (number? res) res
-    (bytes? res) (get-string-or-unserialize-clj-data res)
+   (number? res) res
+   (bytes? res) (get-string-or-unserialize-clj-data res)
     ;; XXX: should we protect against recursion here?
     ;; ArrayList is used for pipeline results, Redis collection types (sets, hash maps etc)
-    (instance? java.util.ArrayList res) (mapv deserialize res)
-    :else res))
+   (instance? java.util.ArrayList res) (mapv deserialize res)
+   :else res))
+
+(defn prefixable? [i]
+  (or (string? i) (keyword? i)))
 
 (defn serialize-key
   "Simplifies dealing with composite keys - rather than stitching them by hand
@@ -64,4 +67,5 @@
                (if (qualified-keyword? segment)
                  (str (namespace segment) "/" (name segment))
                  (name segment))))
+       (remove str/blank?)
        (str/join ":")))

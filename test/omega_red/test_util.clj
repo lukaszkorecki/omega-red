@@ -15,16 +15,32 @@
 (defn conn []
   (:redis @sys))
 
-(defn clean-up-all-data [conn]
+(defn prefixed-conn []
+  (:redis-prefixed @sys))
+
+(defn cleanup-all-data [conn]
   (redis/execute conn [:flushall]))
 
-(defn with-test-system [test]
-  (let [sys-map {:redis (redis.client/create redis-config)
-                 :redis-prefixed (redis.client/create (assoc redis-config :key-prefix "test-prefix"))}]
+(defn with-test-system [test & [{:keys [cleanup? extra-components]
+                                 :or {cleanup? true}}]]
+  (let [sys-map (merge {:redis (redis.client/create redis-config)
+                        :redis-prefixed (redis.client/create (assoc redis-config :key-prefix "test-prefix"))}
+
+                       extra-components)]
     (try
       (reset! sys (component/start (component/map->SystemMap sys-map)))
+      (when cleanup?
+        (cleanup-all-data (conn)))
       (test)
       (catch Throwable e
         (log/error e "Error in test setup"))
       (finally
+        (when cleanup?
+          (cleanup-all-data (conn)))
         (component/stop @sys)))))
+
+
+(defn make-timer []
+  (let [start (System/currentTimeMillis)]
+    (fn []
+      (- (System/currentTimeMillis) ^long start))))

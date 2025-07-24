@@ -1,5 +1,5 @@
 (ns omega-red.client.connection-pool-test
-  (:require [clojure.test :refer [deftest testing is use-fixtures]]
+  (:require [clojure.test :refer [deftest testing is]]
             [omega-red.client.connection-pool :as conn-pool]))
 
 (deftest creating-conn-pool-config-test
