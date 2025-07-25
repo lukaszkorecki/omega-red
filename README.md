@@ -339,6 +339,10 @@ However, that doesn't apply to certain commands like `keys` or `scan` - return v
 
 # Changelog
 
+- 2.5.0 - (in progress)
+  - Added a distributed lock Component and a `with-lock` macro
+  - Improved command processing and key prefixing
+  - Added transaction support
 - 2.3.0 - **bugfix release**
   - adds connection pool configuration options
   - fix a bug in how command pipelines were executed which would cause a resource leak
