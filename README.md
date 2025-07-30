@@ -339,7 +339,7 @@ However, that doesn't apply to certain commands like `keys` or `scan` - return v
 
 # Changelog
 
-- 2.5.0 - (in progress)
+- 2.5.0 
   - Added a distributed lock Component and a `with-lock` macro
   - Improved command processing and key prefixing
   - Added transaction support
