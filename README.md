@@ -11,7 +11,7 @@
 
 ### Features
 
-- Hiccup-style command API
+- HoneySQL-style command API
 - Full Redis protocols support and connection pooling backed by Jedis
 - built-in Component suport (but optional, see section below)
 - automatic key prefixing for data stored in shared Redis instances
