@@ -94,15 +94,15 @@
 
 ;; TODO: move to map-as-component to drop dependency on component?
 (defrecord RedisLock
-    [conn ;; injected
-     lock-key ;; shared key to 'lock' on
-     expiry-ms ;; how long to keep the lock
-     acquire-timeout-ms ;; how long to wait for the lock
-     acquire-resolution-ms ;; how often to check for the lock
+  [conn ;; injected
+   lock-key ;; shared key to 'lock' on
+   expiry-ms ;; how long to keep the lock
+   acquire-timeout-ms ;; how long to wait for the lock
+   acquire-resolution-ms ;; how often to check for the lock
 
      ;; derived state
-     lock-id ;; unique identifier for this lock holder
-     ]
+   lock-id ;; unique identifier for this lock holder
+   ]
   component/Lifecycle
   (start [this]
     (assert (:conn this) "missing Jedis connection pool")
@@ -125,7 +125,7 @@
   (acquire-with-timeout [this {:keys [acquire-timeout-ms]}]
     (try-acquire-with-timeout* conn (cond-> this
                                       ;; override default acquire timeout if passed
-                                      acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms))))
+                                            acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms))))
 
   (renew [this]
     (renew* conn this))
@@ -180,3 +180,29 @@
        {:status ::not-acquired})
      (finally
        (release ~lock))))
+
+(defn create-mock
+  "Creates a mock RedLock implementation for testing purposes.
+   Options:
+   - `:always-acquire?` - if true, `acquire` and `acquire-with-timeout` will always succeed (default: true)"
+  [{:keys [always-acquire?]
+    :or {always-acquire? true}}]
+  (reify RedLock
+    (acquire [_this]
+      (boolean always-acquire?))
+    (acquire-with-timeout [_this]
+      (boolean always-acquire?))
+    (acquire-with-timeout [_this _opts]
+      (boolean always-acquire?))
+    (renew [_this]
+      true)
+    (release [_this]
+      true)
+    (get-id [_this]
+      "mock-lock-id")
+    (get-lock-holder-id [_this]
+      "mock-lock-id")
+    (is-lock-holder? [_this]
+      always-acquire?)
+    (lock-expiry-in-ms [_this]
+      0)))
