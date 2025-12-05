@@ -1,4 +1,4 @@
-(defproject org.clojars.lukaszkorecki/omega-red "2.5.0"
+(defproject org.clojars.lukaszkorecki/omega-red "2.5.1-SNAPSHOT"
   :description "Redis client for Cloure, based on Jedis, with optional Component support"
   :url "https://github.com/nomnom-insights/nomnom.omega-red"
   :license {:name "MIT License"
@@ -10,9 +10,9 @@
                                    :username :env/clojars_username
                                    :password :env/clojars_password}}
 
-  :dependencies [[org.clojure/clojure "1.12.0"]
-                 [com.stuartsierra/component "1.1.0"]
-                 [redis.clients/jedis "6.0.0"]
+  :dependencies [[org.clojure/clojure "1.12.3"]
+                 [com.stuartsierra/component "1.2.0"]
+                 [redis.clients/jedis "7.1.0"]
                  ;; for (de)serializing Clojure data transparently
                  [com.cognitect/transit-clj "1.0.333"]]
 
@@ -23,8 +23,8 @@
 
   :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "2.0.17"]
                                   [org.clojure/tools.logging "1.3.0"]
-                                  [ch.qos.logback/logback-classic "1.5.18"]
-                                  [cheshire "6.0.0"]
+                                  [ch.qos.logback/logback-classic "1.5.21"]
+                                  [cheshire "6.1.0"]
                                   [lambdaisland/kaocha "1.91.1392"]]
                    :extra-paths ["dev-resources" "script"]}}
 
