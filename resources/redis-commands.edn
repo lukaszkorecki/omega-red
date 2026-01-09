@@ -31,6 +31,21 @@
           :has-block-key-args? false,
           :num-args 2,
           :tokens []},
+ :hexpireat {:has-variadic-key-args? false,
+             :arguments ("key"
+                         "unix-time-seconds"
+                         "condition"
+                         "numfields"
+                         "field"),
+             :has-only-one-key-arg? true,
+             :command :hexpireat,
+             :process-keys? true,
+             :is-key-first-arg? true,
+             :variadic? true,
+             :process-tokens? true,
+             :has-block-key-args? false,
+             :num-args 5,
+             :tokens ["NX" "XX" "GT" "LT"]},
  :del {:has-variadic-key-args? true,
        :arguments ("key"),
        :has-only-one-key-arg? false,
@@ -69,7 +84,7 @@
                              "group"
                              "id-selector"
                              "mkstream"
-                             "entries-read"),
+                             "entriesread"),
                  :has-only-one-key-arg? true,
                  :command :xgroup.create,
                  :process-keys? true,
@@ -272,6 +287,17 @@
        :has-block-key-args? false,
        :num-args 2,
        :tokens []},
+ :hpexpiretime {:has-variadic-key-args? false,
+                :arguments ("key" "numfields" "field"),
+                :has-only-one-key-arg? true,
+                :command :hpexpiretime,
+                :process-keys? true,
+                :is-key-first-arg? true,
+                :variadic? true,
+                :process-tokens? false,
+                :has-block-key-args? false,
+                :num-args 4,
+                :tokens []},
  :ltrim {:has-variadic-key-args? false,
          :arguments ("key" "start" "stop"),
          :has-only-one-key-arg? true,
@@ -580,6 +606,17 @@
         :has-block-key-args? false,
         :num-args 2,
         :tokens []},
+ :hexpiretime {:has-variadic-key-args? false,
+               :arguments ("key" "numfields" "field"),
+               :has-only-one-key-arg? true,
+               :command :hexpiretime,
+               :process-keys? true,
+               :is-key-first-arg? true,
+               :variadic? true,
+               :process-tokens? false,
+               :has-block-key-args? false,
+               :num-args 4,
+               :tokens []},
  :zincrby {:has-variadic-key-args? false,
            :arguments ("key" "increment" "member"),
            :has-only-one-key-arg? true,
@@ -751,6 +788,17 @@
                :has-block-key-args? false,
                :num-args 4,
                :tokens ["LIMIT"]},
+ :hpttl {:has-variadic-key-args? false,
+         :arguments ("key" "numfields" "field"),
+         :has-only-one-key-arg? true,
+         :command :hpttl,
+         :process-keys? true,
+         :is-key-first-arg? true,
+         :variadic? true,
+         :process-tokens? false,
+         :has-block-key-args? false,
+         :num-args 4,
+         :tokens []},
  :geohash {:has-variadic-key-args? false,
            :arguments ("key" "member"),
            :has-only-one-key-arg? true,
@@ -876,7 +924,7 @@
            :num-args 3,
            :tokens []},
  :hscan {:has-variadic-key-args? false,
-         :arguments ("key" "cursor" "pattern" "count"),
+         :arguments ("key" "cursor" "pattern" "count" "novalues"),
          :has-only-one-key-arg? true,
          :command :hscan,
          :process-keys? true,
@@ -885,7 +933,7 @@
          :process-tokens? true,
          :has-block-key-args? false,
          :num-args 3,
-         :tokens ["MATCH" "COUNT"]},
+         :tokens ["MATCH" "COUNT" "NOVALUES"]},
  :lolwut {:has-variadic-key-args? false,
           :arguments ("version"),
           :has-only-one-key-arg? false,
@@ -993,7 +1041,8 @@
                         "LADDR"
                         "YES"
                         "NO"
-                        "SKIPME"]},
+                        "SKIPME"
+                        "MAXAGE"]},
  :sintercard {:has-variadic-key-args? false,
               :arguments ("numkeys" "key" "limit"),
               :has-only-one-key-arg? false,
@@ -1005,6 +1054,17 @@
               :has-block-key-args? false,
               :num-args 3,
               :tokens ["LIMIT"]},
+ :hpersist {:has-variadic-key-args? false,
+            :arguments ("key" "numfields" "field"),
+            :has-only-one-key-arg? true,
+            :command :hpersist,
+            :process-keys? true,
+            :is-key-first-arg? true,
+            :variadic? true,
+            :process-tokens? false,
+            :has-block-key-args? false,
+            :num-args 4,
+            :tokens []},
  :hget {:has-variadic-key-args? false,
         :arguments ("key" "field"),
         :has-only-one-key-arg? true,
@@ -1038,6 +1098,21 @@
          :has-block-key-args? false,
          :num-args 1,
          :tokens ["AUTH" "SETNAME"]},
+ :hexpire {:has-variadic-key-args? false,
+           :arguments ("key"
+                       "seconds"
+                       "condition"
+                       "numfields"
+                       "field"),
+           :has-only-one-key-arg? true,
+           :command :hexpire,
+           :process-keys? true,
+           :is-key-first-arg? true,
+           :variadic? true,
+           :process-tokens? true,
+           :has-block-key-args? false,
+           :num-args 5,
+           :tokens ["NX" "XX" "GT" "LT"]},
  :move {:has-variadic-key-args? false,
         :arguments ("key" "db"),
         :has-only-one-key-arg? true,
@@ -1060,6 +1135,21 @@
                    :has-block-key-args? false,
                    :num-args 3,
                    :tokens ["ON" "OFF"]},
+ :hpexpire {:has-variadic-key-args? false,
+            :arguments ("key"
+                        "milliseconds"
+                        "condition"
+                        "numfields"
+                        "field"),
+            :has-only-one-key-arg? true,
+            :command :hpexpire,
+            :process-keys? true,
+            :is-key-first-arg? true,
+            :variadic? true,
+            :process-tokens? true,
+            :has-block-key-args? false,
+            :num-args 5,
+            :tokens ["NX" "XX" "GT" "LT"]},
  :hexists {:has-variadic-key-args? false,
            :arguments ("key" "field"),
            :has-only-one-key-arg? true,
@@ -1334,6 +1424,21 @@
           :has-block-key-args? false,
           :num-args 1,
           :tokens ["SCHEDULE"]},
+ :hpexpireat {:has-variadic-key-args? false,
+              :arguments ("key"
+                          "unix-time-milliseconds"
+                          "condition"
+                          "numfields"
+                          "field"),
+              :has-only-one-key-arg? true,
+              :command :hpexpireat,
+              :process-keys? true,
+              :is-key-first-arg? true,
+              :variadic? true,
+              :process-tokens? true,
+              :has-block-key-args? false,
+              :num-args 5,
+              :tokens ["NX" "XX" "GT" "LT"]},
  :replicaof {:has-variadic-key-args? false,
              :arguments ("args"),
              :has-only-one-key-arg? false,
@@ -2001,6 +2106,17 @@
          :has-block-key-args? false,
          :num-args 4,
          :tokens []},
+ :httl {:has-variadic-key-args? false,
+        :arguments ("key" "numfields" "field"),
+        :has-only-one-key-arg? true,
+        :command :httl,
+        :process-keys? true,
+        :is-key-first-arg? true,
+        :variadic? true,
+        :process-tokens? false,
+        :has-block-key-args? false,
+        :num-args 4,
+        :tokens []},
  :function.flush {:has-variadic-key-args? false,
                   :arguments ("flush-type"),
                   :has-only-one-key-arg? false,
@@ -2056,6 +2172,38 @@
                          :has-block-key-args? false,
                          :num-args 5,
                          :tokens []},
+ :hsetf {:has-variadic-key-args? false,
+         :arguments ("key"
+                     "create key option"
+                     "create option"
+                     "return option"
+                     "condition"
+                     "expiration"
+                     "fvs"
+                     "count"
+                     "data"),
+         :has-only-one-key-arg? true,
+         :command :hsetf,
+         :process-keys? true,
+         :is-key-first-arg? true,
+         :variadic? true,
+         :process-tokens? true,
+         :has-block-key-args? false,
+         :num-args 6,
+         :tokens ["DC"
+                  "DCF"
+                  "DOF"
+                  "GETNEW"
+                  "GETOLD"
+                  "NX"
+                  "XX"
+                  "GT"
+                  "LT"
+                  "EX"
+                  "PX"
+                  "EXAT"
+                  "PXAT"
+                  "KEEPTTL"]},
  :zinter {:has-variadic-key-args? false,
           :arguments ("numkeys"
                       "key"
@@ -2310,6 +2458,30 @@
           :has-block-key-args? false,
           :num-args 4,
           :tokens ["BYSCORE" "BYLEX" "REV" "LIMIT" "WITHSCORES"]},
+ :hgetf {:has-variadic-key-args? false,
+         :arguments ("key"
+                     "condition"
+                     "expiration"
+                     "fields"
+                     "count"
+                     "field"),
+         :has-only-one-key-arg? true,
+         :command :hgetf,
+         :process-keys? true,
+         :is-key-first-arg? true,
+         :variadic? true,
+         :process-tokens? true,
+         :has-block-key-args? false,
+         :num-args 5,
+         :tokens ["NX"
+                  "XX"
+                  "GT"
+                  "LT"
+                  "EX"
+                  "PX"
+                  "EXAT"
+                  "PXAT"
+                  "PERSIST"]},
  :zremrangebyscore {:has-variadic-key-args? false,
                     :arguments ("key" "min" "max"),
                     :has-only-one-key-arg? true,
