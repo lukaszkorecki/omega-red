@@ -13,7 +13,7 @@
 
 - HoneySQL-style command API
 - Full Redis protocols support and connection pooling backed by Jedis
-- built-in Component suport (but optional, see section below)
+- built-in Component support (but optional, see section below)
 - automatic key prefixing for data stored in shared Redis instances
 - transparent serialization/deserialization of Clojure data structures via Transit
 
@@ -24,12 +24,12 @@
 - no support for Redis Streams, Lua scripts or other advanced features
 
 > [!NOTE]
-> This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time.
-> and most of the original authors are no longer working on it. This fork is a continuation of the project, with breaking changes.
+> This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time
+> and most of the original authors are no longer working on it. This fork is a continuation of the project with breaking changes.
 
 #### Command API
 
-Rather than implementing a function for each Redis command, Omega Red uses vector-based API:
+Rather than implementing a function for each Redis command, Omega Red uses a vector-based API:
 
 
 ``` clojure
@@ -56,14 +56,14 @@ so you can pass Clojure data structures directly to Redis commands and receive t
 
 
  > [!NOTE]
- > Only basic Clojure datas tructures are supported - strings, numbers, lists, vectors, maps and sets.
+ > Only basic Clojure data structures are supported - strings, numbers, lists, vectors, maps and sets.
  > Currently serializing other types or Java classes is not supported.
 
 #### Usage
 To create a client Component, call `omega-red.client/create` with an arg map, the following options are accepted:
 
 - `:uri` - full Redis connection URI
-- `:key-prefix` - optional, a string or keywor to prefix all keys used in write & read commands issued by this client (see below)
+- `:key-prefix` - optional, a string or keyword to prefix all keys used in write & read commands issued by this client (see below)
 - `:ping-on-start?` - optional, if set to `true`, the client will attempt to ping the Redis server on start
 - `:connection-pool` - either instance of `JedisPoolConfig` or a map which configures the connection pool, the keys and their default values are:
    - `:max-total` - 100, usually a sane default even for small Redis instances
@@ -90,7 +90,7 @@ Once the component is created and started, you can call `omega-red.redis/execute
 
 ;; no magic here, just clojure data
 (redis/execute client [:sadd "some-set" "a" "b" "c"])
-(into #{} (reddis/execute client [:smembers "some-set"])) ;; => #{"a" "b" "c"}
+(into #{} (redis/execute client [:smembers "some-set"])) ;; => #{"a" "b" "c"}
 
 
 ;; pipelining:
@@ -121,7 +121,7 @@ Once the component is created and started, you can call `omega-red.redis/execute
 ##### 'Tokens' in commands
 
 Redis' specs use the term 'token' to describe the arguments of a command. Some commands support named arguments, such as `SET`'s `EX` or `NX`.
-To make working with the DSL more convinient Omega Red supports passing these tokens as strings or keywords, so you can write:
+To make working with the DSL more convenient, Omega Red supports passing these tokens as strings or keywords, so you can write:
 
 ```clojure
 (redis/execute con [:set "foobar" :ex 10]) ;; => "OK"
@@ -133,17 +133,17 @@ To make working with the DSL more convinient Omega Red supports passing these to
 Enforcing consistent key prefixes is often used when several applications share the same Redis instance. It's also
 helpful if you need to version your keys or separate them by environment/workload to avoid collisions.
 
-When key prefixing is configred, Omega Red will figure out for you which parts of Redis commands are keys
-and will apply the prefix automatically.
+When key prefixing is configured, Omega Red will automatically determine which parts of Redis commands are keys
+and apply the prefix accordingly.
 
 > [!WARNING]
-> Automatic key prefixing is implemented by using Redis' own command specification to figure out which arguments are keys, however it's not perfect
-> Due to inconsistencies of Redis specs and general lack of information how command processing should be implemented
+> Automatic key prefixing is implemented by using Redis' own command specification to determine which arguments are keys, however it's not perfect.
+> Due to inconsistencies in Redis specs and general lack of information about how command processing should be implemented,
 > 100% command coverage is not guaranteed. If you find a command that doesn't work as expected, please file an issue.
-> Currently known commands that **are not** prefixed are `EVAL`, `SCRIPT` as and others. To find out supported commands
+> Currently known commands that **are not** prefixed are `EVAL`, `SCRIPT` and others. To find out which commands are supported,
 > eval `(sort (keys omega-red.redis.command/key-processors))` in the REPL.
 
-Auto-prefixing is enabled by setting `:key-prefix` in options map when creating the client component:
+Auto-prefixing is enabled by setting `:key-prefix` in the options map when creating the client component:
 
 ```clojure
 (ns omega-red.redis-test
@@ -161,10 +161,10 @@ Auto-prefixing is enabled by setting `:key-prefix` in options map when creating 
 
 
 (redis/execute srv1-client [:set "foo" "1"]) ;; => "OK", would set key "srv1:foo"
-(redis/execute srv2-client [:set "foo" "2"]) ;; => "OK", would set key "srv2:foo"
+(redis/execute srv2-client [:set "foo" "2"]) ;; => "OK", sets key "srv2:foo"
 
 ;; HOWEVER:
-(redis/execute srv1-client [:keys "foo*"]) ;; => [] - because of autoprefixing!
+(redis/execute srv1-client [:keys "foo*"]) ;; => [] - because of auto-prefixing!
 ```
 
 ##### Cache utils
@@ -180,12 +180,12 @@ Example:
             [omega-red.client :as redis.client]
             [com.stuartsierra.component :as component]))
 
-(let [conn (componet/start (redis.client/create {:uri "127.0.0.1:6379"}))
+(let [conn (component/start (redis.client/create {:uri "redis://127.0.0.1:6379"}))
       ;; caching example
       fetch! (fn []
                (cache/get-or-fetch conn {:fetch (fn [] (slurp "http://example.com"))
-                                         :cache-set (fn [conn fetch-res]
-                                                      (redis/execute conn [:set "example" fetch-res "EX" 10])
+                                          :cache-set (fn [conn fetch-res]
+                                                       (redis/execute conn [:set "example" fetch-res "EX" 10]))
                                          :cache-get (fn [conn]
                                                       (redis/execute conn [:get "example"]))}))]
 
@@ -195,7 +195,7 @@ Example:
   (Thread/sleep (* 10 1000)) ;; wait 10s
   (fetch!) ;; => makes http request again
 
-  ;; Convinence function for memoization:
+  ;; Convenience function for memoization:
 
   ;; memoize-replacement - DATA WILL STICK AROUND UNLESS SOMETHING ELSE DELETES THE KEY
   (cache/memoize conn  {:key "example.com"
@@ -212,18 +212,18 @@ Example:
 A lock Component is provided. It uses Lua scripts to implement locking and unlocking. Implementation is based on Carmine's and jedis-tools implementation.
 
 > [!NOTE]
-> Redis locks are Good Enough :tm: for most use cases, but they are not perfect. They're really effective when using a single Redis instance, however
-> clustered deployments are not guaranteed to behave correctly. Consider a distributed lock implementation based on Consul, Zookeeper or even Postgres-based optimistic locking
+> Redis locks are Good Enough :tm: for most use cases, but they are not perfect. They're very effective when using a single Redis instance, however
+> clustered deployments are not guaranteed to behave correctly. For clustered environments, consider a distributed lock implementation based on Consul, Zookeeper, or even Postgres-based optimistic locking.
 
 
 Options supported by `omega-red.lock/create`:
 
-- `:lock-key` - the key to use for the lock, e.g "db-migration" or "widget-data-sync", if client has as `:key-prefix` set, the prefix will be applied to the lock key
+- `:lock-key` - the key to use for the lock, e.g. "db-migration" or "widget-data-sync". If the client has a `:key-prefix` set, the prefix will be applied to the lock key
 - `:expiry-ms` - the lock expiry time in milliseconds, default is 1 minute, this is the upper bound for how long the lock will be held, even if the process holding it dies
 - `:acquire-timeout-ms` - the time to wait for the lock to be acquired, default is 10 seconds
 - `:acquire-resolution-ms` - the time to wait between attempts to acquire the lock, default is 100ms
 
-The api for working with locks is a set of functions:
+The API for working with locks is a set of functions:
 
 - `(acquire lock)` - acquire the lock for `expiry-ms` milliseconds, returns `true` if the lock was acquired, `false` otherwise. This is a non-blocking call.
 - `(acquire-with-timeout lock)` - same as `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
@@ -232,17 +232,17 @@ The api for working with locks is a set of functions:
 - `(renew lock)` - if the lock instance is the holder, it can be renewed, this will extend the lock expiry time to `expiry-ms` milliseconds from now
 
 
-A set of functions used to inspect the state of lock can be used:
+The following functions can be used to inspect the state of a lock:
 
 - `(is-lock-holder? lock)` - check if current instance is the lock holder
 - `(lock-expiry-in-ms lock)` - check how long the lock will be held for, in milliseconds
 
 
-For best practices, you want to acquire the lock just long enough to do the work while the lock is held, and release it as soon as possible. If your code anticipates work taking longer than initial expiry, use `renew` to extend the lease.
+As a best practice, acquire the lock just long enough to do the necessary work, and release it as soon as possible. If your code anticipates work taking longer than the initial expiry time, use `renew` to extend the lease.
 
 The locks are re-entrant, meaning a lock holder can acquire the same lock multiple times. Each `acquire` call should be matched with a `release` call.
 
-`with-lock` macro implements simple `acquire-with-timeout` + `finally release` pattern. It will return a map of `{:status .. :?result }`
+The `with-lock` macro implements a simple `acquire-with-timeout` + `finally release` pattern. It returns a map of `{:status .. :?result }`
 
 ```clojure
 (require '[omega-red.redis.client]
@@ -263,7 +263,7 @@ The locks are re-entrant, meaning a lock holder can acquire the same lock multip
       (finally
         (omega-red.lock/release lock)))))
 
-;; there's a convinient macro for using the lock
+;; there's a convenient macro for using the lock
 
 (lock/with-lock lock
   ;; do the db ops here
@@ -292,7 +292,7 @@ If you can't/don't want to use Component, you can use Omega Red without it. Crea
 pass it to `execute` or `execute-pipeline` functions under `:pool` key:
 
 ```clojure
-(import (java.clients.jedis Jedis))
+(import (redis.clients.jedis Jedis))
 
 
 (def client (omega-red.client/create {:uri "<ignore me>"}))
@@ -309,7 +309,7 @@ pass it to `execute` or `execute-pipeline` functions under `:pool` key:
 ### Key prefixes and listing keys
 
 When `:key-prefix` is set, Omega Red will prefix all keys in Redis commands with the value of `:key-prefix` - this is safe because Omega Red uses Redis' own command specification to implement key processing.
-However, that doesn't apply to certain commands like `keys` or `scan` - return values of these commands will include a prefix, which might lead to some confusion, see this example:
+However, the return values of commands like `keys` or `scan` will include the prefix, which might lead to some confusion. See this example:
 
 
 ``` clojure
@@ -339,48 +339,48 @@ However, that doesn't apply to certain commands like `keys` or `scan` - return v
 
 # Changelog
 
-- 2.6.0
+- [2.6.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.6.0)
   - Added mock lock component for testing
   - Added `release-on-stop?` option to lock component
   - Dependency updates and refreshed Redis command spec
-- 2.5.0 
+- [2.5.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.5.0)
   - Added a distributed lock Component and a `with-lock` macro
   - Improved command processing and key prefixing
   - Added transaction support
-- 2.3.0 - **bugfix release**
-  - adds connection pool configuration options
-  - fix a bug in how command pipelines were executed which would cause a resource leak
+- [2.3.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.3.0) - **bugfix release**
+  - Added connection pool configuration options
+  - Fixed a bug in how command pipelines were executed which would cause a resource leak
 
-- 2.2.0 - 2025/03/10
+- [2.2.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.2.0)
   - First stable release based on Jedis
 
-- 2.2.0-SNAPSHOT - 2025/02/26  **Breaking changes**
-  - migrates off Carmine to Jedis
-  - internals updates, better separation of namespaces
-  - support for auto key prefixing
-  - better cache helpers
-  - dependency updates
+- 2.2.0-SNAPSHOT - **Breaking changes**
+  - Migrated from Carmine to Jedis
+  - Internal updates with better separation of namespaces
+  - Support for auto key prefixing
+  - Better cache helpers
+  - Dependency updates
 
-- 2.1.0-SNAPSHOT - 2025/02/07 - **Unreleased exploratory version** **Breaking changes**
- - refactors internals
+- 2.1.0-SNAPSHOT - **Unreleased exploratory version** - **Breaking changes**
+  - Refactored internals
 
-- 2.0.0 - 2025/01/09 - **Breaking changes**:
-  - takes over from the original repo, with a new Maven coordinate
-  - changes namespace structure
-  - proper connection pool management
-  - faster implementation using Carmine's internals
-  - dependency update
-  - fixes to cache helper
+- [2.0.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.0.0) - **Breaking changes**
+  - Took over from the original repo, with a new Maven coordinate
+  - Changed namespace structure
+  - Proper connection pool management
+  - Faster implementation using Carmine's internals
+  - Dependency updates
+  - Fixes to cache helper
 
-- 1.1.0 - 2022/03/08 - Clean up and cache helper
+- 1.1.0 - Clean up and cache helper
 - 1.0.2 - Dependency updates
 - 1.0.0-SNAPSHOT - **Breaking change!** Changes signature of `execute` to accept a vector, and `execute-pipeline` to accept a vector of vectors. This makes it easier to work with variadic Redis commands (`hmset` etc) and compose commands
-- 0.1.0- 2019/10/23 - Initial Public Offering
+- 0.1.0 - Initial Public Offering
 
 # Roadmap
 
 - [x] explicit connection pool component with its own lifecycle
 - [x] move off Carmine and use Jedis or Lettuce directly (because of the point above)
 - [ ] more Jedis/Apache Pool configuration options
-- [x] improved command arg handling, to account for non-key arguments that can expressedp themselves as keywords
+- [x] improved command arg handling, to account for non-key arguments that can express themselves as keywords
 - [ ] metrics/OTel support
