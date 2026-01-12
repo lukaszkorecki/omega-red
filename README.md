@@ -339,6 +339,10 @@ However, that doesn't apply to certain commands like `keys` or `scan` - return v
 
 # Changelog
 
+- 2.6.0
+  - Added mock lock component for testing
+  - Added `release-on-stop?` option to lock component
+  - Dependency updates and refreshed Redis command spec
 - 2.5.0 
   - Added a distributed lock Component and a `with-lock` macro
   - Improved command processing and key prefixing
