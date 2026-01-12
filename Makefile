@@ -14,6 +14,14 @@ prep-resources:
 test: prep-resources
 	lein test
 
+clean:
+	lein clean
 
 deploy: prep-resources
 	lein deploy clojars
+
+
+help:
+	grep -E '^[a-z]+:' ./Makefile
+
+.PHONY: fmt lint prep-resources test deploy help clean
