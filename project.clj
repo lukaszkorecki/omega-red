@@ -10,21 +10,21 @@
                                    :username :env/clojars_username
                                    :password :env/clojars_password}}
 
-  :dependencies [[org.clojure/clojure "1.12.4"]
+  :dependencies [[org.clojure/clojure "1.12.6"]
                  [com.stuartsierra/component "1.2.0"]
-                 [redis.clients/jedis "7.2.0"]
+                 [redis.clients/jedis "8.0.1"]
                  ;; for (de)serializing Clojure data transparently
-                 [com.cognitect/transit-clj "1.0.333"]]
+                 [com.cognitect/transit-clj "1.1.363"]]
 
   :global-vars {*warn-on-reflection* true}
   ;; include whole stack traces
   :jvm-opts ["-XX:-OmitStackTraceInFastThrow"]
 
 
-  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "2.0.17"]
+  :profiles {:dev {:dependencies [[org.slf4j/slf4j-api "2.0.19"]
                                   [org.clojure/tools.logging "1.3.1"]
-                                  [ch.qos.logback/logback-classic "1.5.24"]
-                                  [cheshire "6.1.0"]
+                                  [ch.qos.logback/logback-classic "1.6.3"]
+                                  [cheshire "6.2.0"]
                                   [lambdaisland/kaocha "1.91.1392"]]
                    :extra-paths ["dev-resources" "script"]}}
 
