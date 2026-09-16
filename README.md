@@ -27,6 +27,16 @@
 > This repo takes over from the original [omega-red](https://github.com/nomnom-insights/nomnom.omega-red) since it received no updates for a long time
 > and most of the original authors are no longer working on it. This fork is a continuation of the project with breaking changes.
 
+### Migrating to v3
+
+v3 upgrades to Jedis 8, which removed `JedisPooled` and replaced it with `RedisClient`. Omega Red's own API is unchanged:
+
+- if you pass `:connection-pool` as a **map**, nothing to do
+- if you pass a pool config **instance**, swap `JedisPoolConfig` for `redis.clients.jedis.ConnectionPoolConfig` - it's the type Jedis 8 builders expect
+- if you reach for the underlying client directly, it's now a `RedisClient` rather than a `JedisPooled` - both extend `UnifiedJedis`, so `sendCommand`, `pipelined` and `multi` are unchanged
+- connection pooling behaves exactly as before - same commons-pool2 settings, same reuse semantics
+
+
 #### Command API
 
 Rather than implementing a function for each Redis command, Omega Red uses a vector-based API:
@@ -288,23 +298,18 @@ The `with-lock` macro implements a simple `acquire-with-timeout` + `finally rele
 
 ##### Redis client usage without Component
 
-If you can't/don't want to use Component, you can use Omega Red without it. Create an instance of `Jedis` or `JedisPool` and
-pass it to `execute` or `execute-pipeline` functions under `:pool` key:
+If you can't/don't want to use Component, you can use Omega Red without it. Create an instance of `RedisClient` (with or without a connection pool), and use `omega-red.redis.protocol` namespace to invoke `execute*`, `transact*` or `execute-pipeline*`.
 
-```clojure
-(import (redis.clients.jedis Jedis))
+See `client_test.clj` for a runnable example.
 
-
-(def client (omega-red.client/create {:uri "<ignore me>"}))
-
-
-(with-open [jedis (Jedis. "redis://localhost:6379")]
-  (omega-red.redis/execute {:pool jedis} [:set "foo" "bar"])
-  (omega-red.redis/execute {:pool jedis} [:get "foo"]))
-```
+> [!WARNING]
+> Using Omega Red this way works, but bypasses key prefixing and command processing.
+> You'll have to use `omega-red.redis.command` for that.
+> This approach is best suitable for:
+> - quick evals and poking around Redis state
+> - if you want to add an adapter for other Component-like library
 
 ## Notes & Caveats
-
 
 ### Key prefixes and listing keys
 
@@ -335,18 +340,11 @@ However, the return values of commands like `keys` or `scan` will include the pr
 ```
 
 
-
-
-# Migrating to v3
-
-v3 upgrades to Jedis 8, which removed `JedisPooled` and replaced it with `RedisClient`. Omega Red's own API is unchanged:
-
-- if you pass `:connection-pool` as a **map**, nothing to do
-- if you pass a pool config **instance**, swap `JedisPoolConfig` for `redis.clients.jedis.ConnectionPoolConfig` - it's the type Jedis 8 builders expect
-- if you reach for the underlying client directly, it's now a `RedisClient` rather than a `JedisPooled` - both extend `UnifiedJedis`, so `sendCommand`, `pipelined` and `multi` are unchanged
-- connection pooling behaves exactly as before - same commons-pool2 settings, same reuse semantics
-
 # Changelog
+
+- 3.0.0-SNAPSHOT - **Breaking changes**
+  - upgrades internals to Jedis 8 (see 'Migrating to v3' section)
+  - refreshed command specs for compatibility with Redis 8
 
 - [2.6.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.6.0)
   - Added mock lock component for testing
@@ -392,4 +390,4 @@ v3 upgrades to Jedis 8, which removed `JedisPooled` and replaced it with `RedisC
 - [x] move off Carmine and use Jedis or Lettuce directly (because of the point above)
 - [ ] more Jedis/Apache Pool configuration options
 - [x] improved command arg handling, to account for non-key arguments that can express themselves as keywords
-- [ ] metrics/OTel support
+- [x] metrics/OTel support - **done** Jedis is automatically instrumented when OTel Agent is provided
