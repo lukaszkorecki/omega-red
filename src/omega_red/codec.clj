@@ -9,11 +9,13 @@
 
 ;; NOTE: to disambiguate regular strings from serialized Clojure data
 ;;       Clojure serialization will add a known prefix
-;;       To make sure we can deal with changes to how we serialize data - we will encode
-;;       serialization version using the prefix
+;;       To make sure we can deal with changes to how we serialize data
+;;       serialization version is stored in the prefix
 (def ^:private ser-prefix "~cV1~")
 (def ^:private ser-prefix-len (count ser-prefix))
 
+;; TODO: how to provide different serialization machinery or Transit
+;;       features like message pack?
 (defn- serialize-clj [input]
   (with-open [out (ByteArrayOutputStream. 64)] ;; short buffer to reduce allocations
     (let [writer (transit/writer out :json)]
