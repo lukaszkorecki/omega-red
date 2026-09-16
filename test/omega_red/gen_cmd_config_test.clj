@@ -27,7 +27,7 @@
           :variadic? true
           :process-keys? true
           :process-tokens? true
-          :tokens ["NX" "XX" "GET" "EX" "PX" "EXAT" "PXAT" "KEEPTTL"]}
+          :tokens ["NX" "XX" "IFEQ" "IFNE" "IFDEQ" "IFDNE" "GET" "EX" "PX" "EXAT" "PXAT" "KEEPTTL"]}
          (get gcc/command-specs :set))))
 
 (deftest mset-spec-test
@@ -101,7 +101,7 @@
          (get gcc/command-specs :hset))))
 
 (deftest xreadgroup-spec-test
-  (is (= {:arguments ["group-block" "count" "milliseconds" "noack" "streams"]
+  (is (= {:arguments ["group-block" "count" "milliseconds" "min-idle-time" "noack" "streams"]
           :command :xreadgroup
           :has-block-key-args? false
           :has-only-one-key-arg? false
@@ -111,5 +111,5 @@
           :variadic? true
           :process-keys? false
           :process-tokens? true
-          :tokens ["GROUP" "COUNT" "BLOCK" "NOACK" "STREAMS"]}
+          :tokens ["GROUP" "COUNT" "BLOCK" "CLAIM" "NOACK" "STREAMS"]}
          (get gcc/command-specs :xreadgroup))))
