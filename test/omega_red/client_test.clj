@@ -42,7 +42,7 @@
 
 (deftest without-component-test
   (testing "the protocol ns works with any UnifiedJedis instance"
-    (with-open [client (RedisClient/create "redis://localhost:6379")]
+    (with-open [client (RedisClient/create (:uri tu/redis-config))]
       (is (= "OK" (redis.proto/execute* client [:set "no-component" "bar"])))
       (is (= "bar" (redis.proto/execute* client [:get "no-component"])))
       (is (= ["PONG" "bar"]
