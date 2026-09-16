@@ -2,7 +2,7 @@
   "Utility namespace for streamlining connection pool creation & configuration"
   (:require [clojure.spec.alpha :as s])
   (:import
-   [redis.clients.jedis JedisPoolConfig]))
+   [redis.clients.jedis ConnectionPoolConfig]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,10 +32,10 @@
           (nil? min-idle) (assoc :min-idle (max 1 (int (/ max-total 10))))))
 
 (defn pool-config? [x]
-  (instance? JedisPoolConfig x))
+  (instance? ConnectionPoolConfig x))
 
 (defn configure
-  ^JedisPoolConfig
+  ^ConnectionPoolConfig
   [config]
   (if (pool-config? config)
     config
@@ -43,16 +43,16 @@
                                                                     validate-config
                                                                     calculate-defaults
                                                                     validate-config)
-          pool-config ^JedisPoolConfig (doto (JedisPoolConfig.)
-                                         (.setMaxTotal max-total)
-                                         (.setMaxIdle max-idle)
-                                         (.setMinIdle min-idle)
-                                         (.setBlockWhenExhausted true)
-                                         (.setTestOnBorrow false)
-                                         (.setMinEvictableIdleTimeMillis 60000)
-                                         (.setJmxEnabled false)
-                                         (.setTestOnReturn false)
-                                         (.setTestWhileIdle true))]
+          pool-config ^ConnectionPoolConfig (doto (ConnectionPoolConfig.)
+                                              (.setMaxTotal max-total)
+                                              (.setMaxIdle max-idle)
+                                              (.setMinIdle min-idle)
+                                              (.setBlockWhenExhausted true)
+                                              (.setTestOnBorrow false)
+                                              (.setMinEvictableIdleTimeMillis 60000)
+                                              (.setJmxEnabled false)
+                                              (.setTestOnReturn false)
+                                              (.setTestWhileIdle true))]
       (when max-wait-millis
         (.setMaxWaitMillis pool-config max-wait-millis))
       pool-config)))

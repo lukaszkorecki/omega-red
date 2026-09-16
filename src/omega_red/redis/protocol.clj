@@ -7,9 +7,9 @@
    [redis.clients.jedis
     AbstractPipeline
     AbstractTransaction
-    JedisPooled
     Protocol$Command
-    Response]))
+    Response
+    UnifiedJedis]))
 
 (defn- cmd-kw->cmd* [cmd-kw]
   (let [cmd-name (-> cmd-kw name str/upper-case)]
@@ -26,10 +26,10 @@
   "Executes a single Redis command as vector of command and arguments.:
   (execute-raw! conn [:ping])
   (execute-raw conn [:set \"foo\" \"bar\"])"
-  [^JedisPooled client cmd+args]
+  [^UnifiedJedis client cmd+args]
   {:pre [(seq cmd+args)]}
   (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)
-        result (JedisPooled/.sendCommand client
+        result (UnifiedJedis/.sendCommand client
                                          ^Protocol$Command proto-command
                                          ^String/1 command-args)]
     (codec/deserialize result)))
@@ -42,7 +42,7 @@
                            [:get \"foo\"]
                            [:del \"foo\"]])
   "
-  [^JedisPooled client cmds+args]
+  [^UnifiedJedis client cmds+args]
   {:pre [(seq cmds+args)
          (every? keyword? (map first cmds+args))]}
   (with-open [pipeline ^AbstractPipeline (.pipelined client)]
@@ -66,7 +66,7 @@
                    [:del \"foo\"]])
   "
 
-  [^JedisPooled client cmds+args]
+  [^UnifiedJedis client cmds+args]
   {:pre [(seq cmds+args)
          (every? keyword? (map first cmds+args))]}
   (with-open [tx ^AbstractTransaction (.multi client)]
