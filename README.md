@@ -337,6 +337,15 @@ However, the return values of commands like `keys` or `scan` will include the pr
 
 
 
+# Migrating to v3
+
+v3 upgrades to Jedis 8, which removed `JedisPooled` and replaced it with `RedisClient`. Omega Red's own API is unchanged:
+
+- if you pass `:connection-pool` as a **map**, nothing to do
+- if you pass a pool config **instance**, swap `JedisPoolConfig` for `redis.clients.jedis.ConnectionPoolConfig` - it's the type Jedis 8 builders expect
+- if you reach for the underlying client directly, it's now a `RedisClient` rather than a `JedisPooled` - both extend `UnifiedJedis`, so `sendCommand`, `pipelined` and `multi` are unchanged
+- connection pooling behaves exactly as before - same commons-pool2 settings, same reuse semantics
+
 # Changelog
 
 - [2.6.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v2.6.0)
