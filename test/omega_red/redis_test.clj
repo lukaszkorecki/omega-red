@@ -115,7 +115,6 @@
     (is (thrown-with-msg? AssertionError #"Assert failed:"
                           (redis/key :foo :bar :baz 10)))))
 
-
 (deftest all-features-in-one-test
   (is (= ["OK" {:hello "foo"}]
          (redis/execute-pipeline (tu/prefixed-conn)

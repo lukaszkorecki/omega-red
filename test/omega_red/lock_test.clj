@@ -1,10 +1,10 @@
 (ns omega-red.lock-test
   (:require [clojure.test :refer [deftest testing is use-fixtures]]
-            [omega-red.test-util :as tu]
-            [omega-red.redis :as redis]
+            [com.stuartsierra.component :as component]
             [omega-red.client :as redis.client]
             [omega-red.lock :as redis-lock]
-            [com.stuartsierra.component :as component]))
+            [omega-red.redis :as redis]
+            [omega-red.test-util :as tu]))
 
 (def locking-component-map
   {:conn-1 (redis.client/create (merge tu/redis-config {:key-prefix "locking-test"}))

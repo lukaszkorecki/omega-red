@@ -1,8 +1,8 @@
 (ns omega-red.redis.protocol
   "Deals with Jedis/Redis internal protocol not Clojure protocol"
   (:require
-   [omega-red.codec :as codec]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [omega-red.codec :as codec])
   (:import
    [redis.clients.jedis
     AbstractPipeline
@@ -30,8 +30,8 @@
   {:pre [(seq cmd+args)]}
   (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)
         result (UnifiedJedis/.sendCommand client
-                                         ^Protocol$Command proto-command
-                                         ^String/1 command-args)]
+                                          ^Protocol$Command proto-command
+                                          ^String/1 command-args)]
     (codec/deserialize result)))
 
 (defn execute-pipeline*

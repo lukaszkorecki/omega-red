@@ -1,7 +1,7 @@
 (ns omega-red.lock
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [com.stuartsierra.component :as component]
-            [clojure.java.io :as io]
             [omega-red.redis :as redis]))
 
 (defprotocol RedLock
@@ -52,7 +52,7 @@
                             :lock-id lock-id
                             :expiry-ms expiry-ms})
       true
-          ;; try acquiring
+      ;; try acquiring
       (if (pos? (- timeout acquire-resolution-ms))
         (do
           (try
@@ -98,7 +98,7 @@
    acquire-timeout-ms ;; how long to wait for the lock
    acquire-resolution-ms ;; how often to check for the lock
 
-     ;; derived state
+   ;; derived state
    lock-id ;; unique identifier for this lock holder
    ]
   component/Lifecycle
@@ -124,7 +124,7 @@
   (acquire-with-timeout [this {:keys [acquire-timeout-ms]}]
     (try-acquire-with-timeout* conn (cond-> this
                                       ;; override default acquire timeout if passed
-                                            acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms))))
+                                      acquire-timeout-ms (assoc :acquire-timeout-ms acquire-timeout-ms))))
 
   (renew [this]
     (renew* conn this))
