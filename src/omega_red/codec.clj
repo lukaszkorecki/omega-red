@@ -9,11 +9,13 @@
 
 ;; NOTE: to disambiguate regular strings from serialized Clojure data
 ;;       Clojure serialization will add a known prefix
-;;       To make sure we can deal with changes to how we serialize data - we will encode
-;;       serialization version using the prefix
+;;       To make sure we can deal with changes to how we serialize data
+;;       serialization version is stored in the prefix
 (def ^:private ser-prefix "~cV1~")
 (def ^:private ser-prefix-len (count ser-prefix))
 
+;; TODO: how to provide different serialization machinery or Transit
+;;       features like message pack?
 (defn- serialize-clj [input]
   (with-open [out (ByteArrayOutputStream. 64)] ;; short buffer to reduce allocations
     (let [writer (transit/writer out :json)]
@@ -34,20 +36,20 @@
 
 (defn serialize [thing]
   (cond
-   (boolean? thing) (str thing)
-   (number? thing) (str thing)
-   (string? thing) thing
+    (boolean? thing) (str thing)
+    (number? thing) (str thing)
+    (string? thing) thing
     ;; XXX: things will blow up if we start passing random Java classes, maybe that's for the best?
-   :else (serialize-clj thing)))
+    :else (serialize-clj thing)))
 
 (defn deserialize [res]
   (cond
-   (number? res) res
-   (bytes? res) (get-string-or-unserialize-clj-data res)
+    (number? res) res
+    (bytes? res) (get-string-or-unserialize-clj-data res)
     ;; XXX: should we protect against recursion here?
     ;; ArrayList is used for pipeline results, Redis collection types (sets, hash maps etc)
-   (instance? java.util.ArrayList res) (mapv deserialize res)
-   :else res))
+    (instance? java.util.ArrayList res) (mapv deserialize res)
+    :else res))
 
 (defn prefixable? [i]
   (or (string? i) (keyword? i)))

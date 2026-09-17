@@ -1,9 +1,9 @@
 (ns omega-red.test-util
   (:require
    [clojure.tools.logging :as log]
-   [omega-red.redis :as redis]
+   [com.stuartsierra.component :as component]
    [omega-red.client :as redis.client]
-   [com.stuartsierra.component :as component]))
+   [omega-red.redis :as redis]))
 
 (def redis-config
   (let [host (or (System/getenv "REDIS_HOST") "127.0.0.1")
@@ -38,7 +38,6 @@
         (when cleanup?
           (cleanup-all-data (conn)))
         (component/stop @sys)))))
-
 
 (defn make-timer []
   (let [start (System/currentTimeMillis)]

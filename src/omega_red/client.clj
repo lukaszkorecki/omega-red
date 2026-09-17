@@ -7,13 +7,14 @@
    [omega-red.redis.protocol :as redis.proto])
   (:import
    [java.net URI]
-   [redis.clients.jedis JedisPoolConfig JedisPooled]
+   [redis.clients.jedis ConnectionPoolConfig RedisClient]
+   [redis.clients.jedis.builders AbstractClientBuilder StandaloneClientBuilder]
    [redis.clients.jedis.util JedisURIHelper]))
 
 (defn create-pooled-connection
   "Creates pooled connection
   - `:uri` - the URI string of the Redis server, required
-  - `:connection-pool` - optional, a map of connection pool settings or instance of `JedisPoolConfig`. Options:
+  - `:connection-pool` - optional, a map of connection pool settings or instance of `ConnectionPoolConfig`. Options:
     - `:max-total` - max total connections, defaults to 100
     - `:max-idle` - min total connections, defaults `max-total / 2`
     - `:min-idle` - min idle connections, defaults to 0 or `max-total / 10`
@@ -23,13 +24,16 @@
         _ (when-not (JedisURIHelper/isValid jedis-uri)
             (throw (ex-info "invalid connection uri" {:uri uri})))
         pool-config (client.connection-pool/configure (or connection-pool {:max-total 100}))]
-    (JedisPooled. ^JedisPoolConfig pool-config ^String uri)))
+    (-> (doto (RedisClient/builder)
+          (StandaloneClientBuilder/.fromURI ^URI jedis-uri)
+          (AbstractClientBuilder/.poolConfig ^ConnectionPoolConfig pool-config))
+        (AbstractClientBuilder/.build))))
 
 (defn create
   "Creates a Redis connection component.
   Args:
   - `:uri` - the URI string of the Redis server, required
-  - `:connection-pool` - optional, a map of connection pool settings or instance of `JedisPoolConfig`
+  - `:connection-pool` - optional, a map of connection pool settings or instance of `ConnectionPoolConfig`
      See `create-pooled-connection` for more details.
 
   - `:key-prefix` - optional, a prefix for all keys, usually a service name - can be a string or keyword
@@ -62,7 +66,7 @@
      'com.stuartsierra.component/stop (fn stop' [this]
                                         (if-let [pool (:pool this)]
                                           (do
-                                            (JedisPooled/.close pool)
+                                            (RedisClient/.close pool)
                                             (assoc this :pool nil :connected? false))
                                           this))
 

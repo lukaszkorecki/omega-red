@@ -1,9 +1,9 @@
 (ns omega-red.cache-test
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
-   [omega-red.test-util :as tu]
+   [omega-red.cache :as redis.cache]
    [omega-red.redis :as redis]
-   [omega-red.cache :as redis.cache]))
+   [omega-red.test-util :as tu]))
 
 (def state (atom 0))
 

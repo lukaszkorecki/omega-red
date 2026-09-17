@@ -16,7 +16,7 @@
     (is (= #{:x}
            (-> ;; input to Jedis is always a string
             (codec/serialize #{:x})
-               ;; this is because internally, Jedis always gives us byte arrays
+            ;; this is because internally, Jedis always gives us byte arrays
             (String/.getBytes "UTF-8")
             codec/deserialize))))
 

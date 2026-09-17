@@ -1,9 +1,11 @@
 (ns omega-red.client-test
   (:require
-   [omega-red.test-util :as tu]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [omega-red.redis :as redis]
-   [omega-red.redis.protocol :as redis.proto]))
+   [omega-red.redis.protocol :as redis.proto]
+   [omega-red.test-util :as tu])
+  (:import
+   [redis.clients.jedis RedisClient]))
 
 (use-fixtures :each tu/with-test-system)
 
@@ -30,10 +32,20 @@
       (is (= []
              (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"]))))))
 
-(deftest building-keys
+(deftest building-keys-test
   (testing "keys don't always have to be strings, and work with prefixes"
 
     (is (= "OK" (redis/execute (:redis-prefixed @tu/sys) [:set (redis/key "pref-key" "bananas") "foo"])))
 
     (is (= ["test-prefix:pref-key:bananas"]
            (redis.proto/execute* (:pool (:redis-prefixed @tu/sys)) [:keys "test-prefix*"])))))
+
+(deftest without-component-test
+  (testing "the protocol ns works with any UnifiedJedis instance"
+    (with-open [client (RedisClient/create (:uri tu/redis-config))]
+      (is (= "OK" (redis.proto/execute* client [:set "no-component" "bar"])))
+      (is (= "bar" (redis.proto/execute* client [:get "no-component"])))
+      (is (= ["PONG" "bar"]
+             (redis.proto/execute-pipeline* client [[:ping] [:get "no-component"]])))
+      (is (= ["bar" 1]
+             (redis.proto/transact* client [[:get "no-component"] [:del "no-component"]]))))))
