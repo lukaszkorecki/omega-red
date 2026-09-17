@@ -342,7 +342,8 @@ However, the return values of commands like `keys` or `scan` will include the pr
 
 # Changelog
 
-- 3.0.0-SNAPSHOT - **Breaking changes**
+
+- [3.0.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v3.0.0) - **Breaking changes**
   - upgrades internals to Jedis 8 (see 'Migrating to v3' section)
   - refreshed command specs for compatibility with Redis 8
 
