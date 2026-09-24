@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [cognitect.transit :as transit])
   (:import
-   [java.io ByteArrayInputStream ByteArrayOutputStream]))
+   [java.io ByteArrayInputStream ByteArrayOutputStream]
+   [redis.clients.jedis.util KeyValue]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,8 +48,15 @@
     (number? res) res
     (bytes? res) (get-string-or-unserialize-clj-data res)
     ;; XXX: should we protect against recursion here?
-    ;; ArrayList is used for pipeline results, Redis collection types (sets, hash maps etc)
-    (instance? java.util.ArrayList res) (mapv deserialize res)
+    (instance? java.util.List res)
+    (into []
+          (mapcat (fn [item]
+                    ;; RESP3 map replies (e.g. HGETALL) are KeyValue pairs
+                    (if (instance? KeyValue item)
+                      [(deserialize (KeyValue/.getKey ^KeyValue item))
+                       (deserialize (KeyValue/.getValue ^KeyValue item))]
+                      [(deserialize item)])))
+          res)
     :else res))
 
 (defn prefixable? [i]

@@ -49,6 +49,38 @@
     (is (= #{:x :y :z}
            (set (redis/execute (tu/conn) [:spop "test.some.set" 3]))))))
 
+(deftest hash-read-test
+  (is (= 2 (redis/execute (tu/conn) [:hset "test.some.hash" "one" "1" "two" {:foo :x}])))
+
+  (testing "hgetall returns a flat [field val field val ...] vector"
+    (let [reply (redis/execute (tu/conn) [:hgetall "test.some.hash"])]
+      (is (vector? reply))
+      (is (= {"one" "1" "two" {:foo :x}} (apply hash-map reply)))))
+
+  (testing "hgetall in a pipeline"
+    (let [[reply] (redis/execute-pipeline (tu/conn) [[:hgetall "test.some.hash"]])]
+      (is (= {"one" "1" "two" {:foo :x}} (apply hash-map reply)))))
+
+  (testing "hgetall in a transaction"
+    (let [[reply] (redis/transact (tu/conn) [[:hgetall "test.some.hash"]])]
+      (is (= {"one" "1" "two" {:foo :x}} (apply hash-map reply)))))
+
+  (testing "hgetall on a missing key returns an empty vector"
+    (is (= [] (redis/execute (tu/conn) [:hgetall "test.missing.hash"])))))
+
+(deftest smembers-test
+  (is (= 2 (redis/execute (tu/conn) [:sadd "test.some.set" "x" {:foo 1}])))
+  (is (= #{"x" {:foo 1}} (set (redis/execute (tu/conn) [:smembers "test.some.set"]))))
+  (is (= #{"x" {:foo 1}} (set (first (redis/execute-pipeline (tu/conn) [[:smembers "test.some.set"]]))))))
+
+(deftest nested-reply-test
+  (testing "scan replies with [cursor [key ...]] - the nested list is not flattened"
+    (redis/execute (tu/conn) [:set "test.scan.a" "1"])
+    (redis/execute (tu/conn) [:set "test.scan.b" "2"])
+    (let [[cursor ks] (redis/execute (tu/conn) [:scan "0" :match "test.scan.*" :count "100"])]
+      (is (= "0" cursor))
+      (is (= #{"test.scan.a" "test.scan.b"} (set ks))))))
+
 (deftest clj-data-test
   (testing "get set del with a clojure map"
     (is (= 0 (redis/execute (tu/conn) [:exists "test.some.key"])))
