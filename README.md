@@ -342,6 +342,8 @@ However, the return values of commands like `keys` or `scan` will include the pr
 
 # Changelog
 
+- [3.0.1-SNAPSHOT] 
+  - **Bugfix** - hash map reads are now correctly decoded. Jedis 8 changed return type. See [PR #13](https://github.com/lukaszkorecki/omega-red/pull/13)
 
 - [3.0.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v3.0.0) - **Breaking changes**
   - upgrades internals to Jedis 8 (see 'Migrating to v3' section)
