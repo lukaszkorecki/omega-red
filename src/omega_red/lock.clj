@@ -5,7 +5,8 @@
             [omega-red.redis :as redis]))
 
 (defprotocol RedLock
-  (acquire [this] [this opts] "Acquire the lock. Returns true if acquired, false otherwise.")
+  (acquire [this] [this opts] "Acquire the lock. Returns true if acquired, false otherwise.
+   If this instance already holds the lock, acquiring again succeeds and refreshes the expiry.")
   (acquire-with-timeout [this] [this opts] "Like `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
    If the lock is not acquired within that time, returns false.")
   (renew [this] "Renew the lock. Returns true if renewed, false otherwise.")

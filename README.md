@@ -270,7 +270,7 @@ For tests, `(omega-red.lock/create-mock {:always-acquire? true})` returns a mock
 
 As a best practice, acquire the lock just long enough to do the necessary work, and release it as soon as possible. If your code anticipates work taking longer than the initial expiry time, use `renew` to extend the lease.
 
-The locks are re-entrant, meaning a lock holder can acquire the same lock multiple times. Each `acquire` call should be matched with a `release` call.
+A lock holder can call `acquire` again while holding the lock - it succeeds and refreshes the expiry. A single `release` releases the lock regardless of how many times it was acquired, so nested `with-lock` calls on the same lock release it when the innermost one finishes.
 
 The `with-lock` macro implements a simple `acquire-with-timeout` + `finally release` pattern. It returns a map of `{:status .. :?result }`
 

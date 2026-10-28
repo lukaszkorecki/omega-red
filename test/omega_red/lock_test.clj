@@ -51,6 +51,19 @@
       (is (true? (redis-lock/release (:lock-1 @tu/sys))))
       (is (true? (redis-lock/acquire (:lock-2 @tu/sys)))))))
 
+(deftest reacquire-test
+  (testing "holder can acquire again, which refreshes the expiry"
+    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
+    (Thread/sleep 500)
+    (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
+    (is (< 1500 (redis-lock/lock-expiry-in-ms (:lock-1 @tu/sys)) 2001))
+    (is (false? (redis-lock/acquire (:lock-2 @tu/sys)))))
+
+  (testing "single release frees the lock regardless of acquire count"
+    (is (true? (redis-lock/release (:lock-1 @tu/sys))))
+    (is (false? (redis-lock/is-lock-holder? (:lock-1 @tu/sys))))
+    (is (true? (redis-lock/acquire (:lock-2 @tu/sys))))))
+
 (deftest custom-acquire-timeout-test
   (is (true? (redis-lock/acquire (:lock-1 @tu/sys))))
   (let [run-time-ms (tu/make-timer)]
