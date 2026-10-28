@@ -1,0 +1,24 @@
+[tools]
+leiningen = "latest"
+java = "temurin-25"
+"github:clojure-lsp/clojure-lsp" = "latest"
+
+[tasks.fmt]
+run = "clojure-lsp format"
+
+[tasks.lint]
+run = "clojure-lsp diagnostics"
+
+[tasks.prep-resources]
+run = "lein gen-cmd-config"
+
+[tasks.test]
+depends = ["prep-resources"]
+run = "lein test"
+
+[tasks.clean]
+run = "lein clean"
+
+[tasks.deploy]
+depends = ["prep-resources"]
+run = "lein deploy clojars"

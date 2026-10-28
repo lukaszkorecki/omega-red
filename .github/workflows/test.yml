@@ -20,7 +20,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: clojure:openjdk-11-lein-2.9.6
+      image: clojure:temurin-25-lein-2.13.0
     services:
       redis:
         image: ${{ matrix.version }}
@@ -33,12 +33,12 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4.2.2
+    - uses: actions/checkout@v7.0.1
 
     - name: Cache deps
-      uses: actions/cache@v4.2.2
+      uses: actions/cache@v6.1.0
       with:
-        path: /home/runner/.m2
+        path: ~/.m2/repository
         key: v1-deps-${{ hashFiles('project.clj') }}
         restore-keys: |
           v1-deps-${{ hashFiles('project.clj') }}
@@ -48,7 +48,7 @@ jobs:
       run: lein deps
 
     - name: Prepeare command config
-      run: lein run -m omega-red.gen-cmd-config
+      run: lein gen-cmd-config
 
     - name: Run omega-red tests for ${{ matrix.version }}
       id: tests

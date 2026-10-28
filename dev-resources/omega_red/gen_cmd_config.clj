@@ -3,7 +3,8 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk])
+   [clojure.walk :as walk]
+   [jet.formats :as jet])
   (:import
    [java.io File]))
 
@@ -117,5 +118,6 @@
        (into {})))
 
 (defn -main [& _]
-  (spit "resources/redis-commands.edn" (pr-str command-specs))
+  (spit "resources/redis-commands.edn"
+        (str (jet/generate-edn command-specs true false false) "\n"))
   command-specs)
