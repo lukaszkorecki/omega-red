@@ -373,8 +373,9 @@ Tooling (Java, Leiningen, clojure-lsp) is managed with [mise](https://mise.jdx.d
 
 # Changelog
 
-- Unreleased
+- [3.0.2](https://github.com/lukaszkorecki/omega-red/tree/v3.0.2)
   - **Bugfix** - `:connected?` is now `:omega-red.client/unknown` (was misspelled as `:omega-red.client/unkown`) when `:ping-on-start?` is not set
+  - Documentation clean up and updates
 
 - [3.0.1](https://github.com/lukaszkorecki/omega-red/tree/v3.0.1)
   - **Bugfix** - hash map reads are now correctly decoded. Jedis 8 changed return type. See [PR #13](https://github.com/lukaszkorecki/omega-red/pull/13)
