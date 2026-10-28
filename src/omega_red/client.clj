@@ -15,9 +15,9 @@
   "Creates pooled connection
   - `:uri` - the URI string of the Redis server, required
   - `:connection-pool` - optional, a map of connection pool settings or instance of `ConnectionPoolConfig`. Options:
-    - `:max-total` - max total connections, defaults to 100
-    - `:max-idle` - min total connections, defaults `max-total / 2`
-    - `:min-idle` - min idle connections, defaults to 0 or `max-total / 10`
+    - `:max-total` - max total connections, required when passing a map. If `:connection-pool` is omitted, defaults to 100
+    - `:max-idle` - max idle connections, defaults to `max-total / 2` (at least 1)
+    - `:min-idle` - min idle connections, defaults to `max-total / 10` (at least 1)
     - `:max-wait-millis` - max wait time for a connection, defaults to -1 (block until available)"
   [{:keys [uri connection-pool]}]
   (let [jedis-uri (URI. ^String uri)
@@ -57,7 +57,7 @@
                                                      (throw (ex-info "something went wrong" {:pool pool})))
                                                  connected? (if ping-on-start?
                                                               (= "PONG" (redis.proto/execute* pool [:ping]))
-                                                              ::unkown)]
+                                                              ::unknown)]
                                              (-> this
                                                  (dissoc :uri)
                                                  (assoc :pool pool

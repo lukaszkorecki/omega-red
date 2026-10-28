@@ -112,7 +112,7 @@
                                     [:hmget "test.some.key.pipe-hash" "one" "two" "three" "four"]])))))
 
 (deftest inspecting-test
-  (is (= {:connected? :omega-red.client/unkown
+  (is (= {:connected? :omega-red.client/unknown
           :instance-addr (-> tu/redis-config :instance-addr)}
          (dissoc (tu/conn) :pool)))
 

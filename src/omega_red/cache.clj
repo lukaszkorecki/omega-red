@@ -10,7 +10,7 @@
   "Tiny helper for the usual 'fetch from cache, and if there's a miss, use fetch function to get the data but also cache it'
   Note that, only truthy values are considered cache hits!
   Args:
-  - `conn` - connection to the cache - instance of `Redis`
+  - `conn` - started client component created with `omega-red.client/create`
   - `options`
     - `cache-get` - function to fetch from Redis, accepts the connection as its first arg
     - `fetch` - the function to fetch data from a slow resource
@@ -18,7 +18,7 @@
       - `conn` - connection to the cache
       - `data` - fetched data
   Note:
-  You need to ensure that resuls of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
+  You need to ensure that results of `fetch` and `cache-get` return the same types, e.g. Redis' `SET foo 1`
   will cast 1 as string on read!"
   [conn {:keys [fetch cache-set cache-get]}]
   {:pre [(redis/valid-client? conn)

@@ -5,16 +5,23 @@
    [clojure.string :as str]
    [omega-red.codec :as codec]))
 
-;; run in repl to generate this config
+;; run `mise run prep-resources` or eval in the REPL to generate this config
 (comment
   (require '[omega-red.gen-cmd-config :as gen-cmd-config] :reload)
   (gen-cmd-config/-main))
 
 ;; Commands are generated ^^^^^ schema is:
-;; {:cmd.name {:single-key-arg? bool
-;;             :key-index <int> - index of a key in the command's args, starting from 1 (0th is the command)
-;;             ; only present if single-key-arg is false
-;;             :key-specs { }
+;; {:cmd.name {:command :cmd.name
+;;             :arguments [<arg name> ...]
+;;             :tokens [<token> ...] - named arguments, e.g. EX, NX for SET
+;;             :num-args <int> - includes the command itself, minimum when variadic
+;;             :variadic? bool
+;;             :process-tokens? bool
+;;             :process-keys? bool
+;;             :is-key-first-arg? bool
+;;             :has-only-one-key-arg? bool
+;;             :has-variadic-key-args? bool - e.g. DEL, MGET
+;;             :has-block-key-args? bool - interleaved key/value pairs, e.g. MSET}}
 (def cmd-config
   (-> "redis-commands.edn"
       io/resource

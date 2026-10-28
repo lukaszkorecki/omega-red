@@ -1,5 +1,5 @@
 (ns omega-red.redis
-  "Protocol for redis dispatch, and utilities for working with Redis, caching being the core use case"
+  "Protocol for Redis command dispatch, and utilities for working with Redis keys"
   (:refer-clojure :exclude [key])
   (:require
    [omega-red.codec :as codec]))
@@ -18,13 +18,14 @@
     "Executes a series of commands + their args in a pipeline. Commands are a vector of vecs with the commands and their args")
   (transact
     [this cmd+args]
-    "Executes a series of commands + their args in a transaction. Commands are a vector of vecs with the commands and their args just like `execute-pipeline`
-     NOTE: transactions are usually slower than pipelines, but they are more consistent."))
+    "Executes a series of commands + their args in a transaction (MULTI/EXEC). Commands are a vector of vecs with the commands and their args just like `execute-pipeline`
+     NOTE: transactions are usually slower than pipelines, but commands are executed atomically, with no other client's commands interleaved.
+     Redis does not roll back: if a command fails at runtime, the remaining commands are still applied."))
 
 ;; Command execution
 
 (defn key
-  "Simplifies working with keys that need to be progrmatically built.
+  "Simplifies working with keys that need to be programmatically built.
   e.g. rather than doing `(str some-thing \":\" some-id)` you can do
   (key some-thing some-id)"
   [& args]

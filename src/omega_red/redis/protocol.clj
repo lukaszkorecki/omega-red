@@ -23,9 +23,9 @@
     [proto-cmd (into-array String (mapv codec/serialize args))]))
 
 (defn execute*
-  "Executes a single Redis command as vector of command and arguments.:
-  (execute-raw! conn [:ping])
-  (execute-raw conn [:set \"foo\" \"bar\"])"
+  "Executes a single Redis command as vector of command and arguments:
+  (execute* conn [:ping])
+  (execute* conn [:set \"foo\" \"bar\"])"
   [^UnifiedJedis client cmd+args]
   {:pre [(seq cmd+args)]}
   (let [[proto-command command-args] (cmd+args->command-with-args cmd+args)

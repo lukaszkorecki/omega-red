@@ -4,7 +4,7 @@
 [![Clojars Project](https://img.shields.io/clojars/v/org.clojars.lukaszkorecki/omega-red.svg)](https://clojars.org/org.clojars.lukaszkorecki/omega-red)
 
 
-<img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" heighth="400px" align=right >
+<img  src="https://uncannyxmen.net/sites/default/files/images/characters/omegared/omegared00.jpg" height="400px" align=right >
 
 ## Idiomatic Redis client for Clojure
 
@@ -51,7 +51,8 @@ To send these commands to Redis, use `omega-red.redis/execute`, `omega-red.redis
 - `(execute conn [:command + args])` - for  single commands
 - `(execute-pipeline conn [ [:command1 & args] [:command2 & args]...])` - for pipeline operations - increases performance by sending and reading
   multiple commands in one go, but doesn't come with any consistency guarantees
-- `(transact conn [ [:command1 & args] [:command2 & args]...])` - for transactions - all commands are executed in a transaction, and if any of them fails, the whole transaction is rolled back.
+- `(transact conn [ [:command1 & args] [:command2 & args]...])` - for transactions - all commands are executed atomically via `MULTI`/`EXEC`.
+  Note that Redis [does not roll back](https://redis.io/docs/latest/develop/interact/transactions/) - if a command fails at runtime, the remaining commands are still applied.
 
 
 where `conn` is an instance of a client component created with `omega-red.client/create`.
@@ -66,8 +67,10 @@ so you can pass Clojure data structures directly to Redis commands and receive t
 
 
  > [!NOTE]
- > Only basic Clojure data structures are supported - strings, numbers, lists, vectors, maps and sets.
+ > Only basic Clojure data structures are supported - strings, numbers, booleans, keywords, lists, vectors, maps and sets.
  > Currently serializing other types or Java classes is not supported.
+ > Top-level strings, numbers and booleans are sent as plain strings, so they come back as strings: `1` is read back as `"1"`, `true` as `"true"`.
+ > Everything else is serialized with Transit and read back as Clojure data.
 
 #### Usage
 To create a client Component, call `omega-red.client/create` with an arg map, the following options are accepted:
@@ -75,10 +78,10 @@ To create a client Component, call `omega-red.client/create` with an arg map, th
 - `:uri` - full Redis connection URI
 - `:key-prefix` - optional, a string or keyword to prefix all keys used in write & read commands issued by this client (see below)
 - `:ping-on-start?` - optional, if set to `true`, the client will attempt to ping the Redis server on start
-- `:connection-pool` - either instance of `ConnectionPoolConfig` or a map which configures the connection pool, the keys and their default values are:
-   - `:max-total` - 100, usually a sane default even for small Redis instances
-   - `:max-idle` - 50% of `max-total`
-   - `:min-idle` - 10% of `max-total`
+- `:connection-pool` - either instance of `ConnectionPoolConfig` or a map which configures the connection pool. When omitted, `{:max-total 100}` is used. The keys and their default values are:
+   - `:max-total` - required when passing a map, 100 is usually a sane default even for small Redis instances
+   - `:max-idle` - 50% of `max-total`, at least 1
+   - `:min-idle` - 10% of `max-total`, at least 1
    - `:max-wait-millis` - default of -1, meaning wait indefinitely - *usually* safe to set, but it depends on your setup
 
 
@@ -125,8 +128,8 @@ Once the component is created and started, you can call `omega-red.redis/execute
 
 ;; this way you can do things like this:
 
-(redis/execute-pipeline [[:get (redis/key ::widgets some-id)]
-                         [:hmgetall (redis/key ::counters)]])
+(redis/execute-pipeline client [[:get (redis/key ::widgets some-id)]
+                                [:hgetall (redis/key ::counters)]])
  ```
 ##### 'Tokens' in commands
 
@@ -134,7 +137,7 @@ Redis' specs use the term 'token' to describe the arguments of a command. Some c
 To make working with the DSL more convenient, Omega Red supports passing these tokens as strings or keywords, so you can write:
 
 ```clojure
-(redis/execute con [:set "foobar" :ex 10]) ;; => "OK"
+(redis/execute client [:set "foobar" :ex 10]) ;; => "OK"
 ```
 
 
@@ -151,7 +154,17 @@ and apply the prefix accordingly.
 > Due to inconsistencies in Redis specs and general lack of information about how command processing should be implemented,
 > 100% command coverage is not guaranteed. If you find a command that doesn't work as expected, please file an issue.
 > Currently known commands that **are not** prefixed are `EVAL`, `SCRIPT` and others. To find out which commands are supported,
-> eval `(sort (keys omega-red.redis.command/key-processors))` in the REPL.
+> eval this in the REPL:
+>
+> ```clojure
+> (require '[omega-red.redis.command :as cmd])
+> (->> cmd/key-processors
+>      (remove #(= cmd/no-op-prefixer (val %)))
+>      keys
+>      sort)
+> ```
+>
+> `key-processors` also contains commands with key arguments in positions Omega Red can't determine yet - these are passed through as-is.
 
 Auto-prefixing is enabled by setting `:key-prefix` in the options map when creating the client component:
 
@@ -162,12 +175,12 @@ Auto-prefixing is enabled by setting `:key-prefix` in the options map when creat
             [com.stuartsierra.component :as component]))
 
 (def srv1-client (component/start
-                  (redis.client/redis-client {:uri "redis://localhost:6379"
-                                              :key-prefix "srv1"})))
+                  (redis.client/create {:uri "redis://localhost:6379"
+                                        :key-prefix "srv1"})))
 
 (def srv2-client (component/start
-                  (redis.client/redis-client {:uri "redis://localhost:6379"
-                                              :key-prefix ::srv2})))
+                  (redis.client/create {:uri "redis://localhost:6379"
+                                        :key-prefix ::srv2})))
 
 
 (redis/execute srv1-client [:set "foo" "1"]) ;; => "OK", would set key "srv1:foo"
@@ -232,6 +245,8 @@ Options supported by `omega-red.lock/create`:
 - `:expiry-ms` - the lock expiry time in milliseconds, default is 1 minute, this is the upper bound for how long the lock will be held, even if the process holding it dies
 - `:acquire-timeout-ms` - the time to wait for the lock to be acquired, default is 10 seconds
 - `:acquire-resolution-ms` - the time to wait between attempts to acquire the lock, default is 100ms
+- `:release-on-stop?` - release the lock when the component is stopped, default is `true`
+- `:lock-id` - optional, the ID identifying this lock holder - by default it's generated on component start as `<lock-key>-<random uuid>`
 
 The API for working with locks is a set of functions:
 
@@ -245,7 +260,12 @@ The API for working with locks is a set of functions:
 The following functions can be used to inspect the state of a lock:
 
 - `(is-lock-holder? lock)` - check if current instance is the lock holder
-- `(lock-expiry-in-ms lock)` - check how long the lock will be held for, in milliseconds
+- `(lock-expiry-in-ms lock)` - check how long the lock will be held for, in milliseconds. Returns a negative number if the lock doesn't exist
+- `(get-id lock)` - the lock ID of this instance
+- `(get-lock-holder-id lock)` - the lock ID of the current lock holder, `nil` if the lock is not held
+
+For tests, `(omega-red.lock/create-mock {:always-acquire? true})` returns a mock implementing the same protocol, without talking to Redis.
+`:always-acquire?` controls whether `acquire` and `acquire-with-timeout` succeed, default is `true`.
 
 
 As a best practice, acquire the lock just long enough to do the necessary work, and release it as soon as possible. If your code anticipates work taking longer than the initial expiry time, use `renew` to extend the lease.
@@ -255,8 +275,9 @@ The locks are re-entrant, meaning a lock holder can acquire the same lock multip
 The `with-lock` macro implements a simple `acquire-with-timeout` + `finally release` pattern. It returns a map of `{:status .. :?result }`
 
 ```clojure
-(require '[omega-red.redis.client]
-         '[omega-red.lock])
+(require '[com.stuartsierra.component :as component]
+         '[omega-red.client]
+         '[omega-red.lock :as lock])
 
 (def sys-map
   {:conn (omega-red.client/create {:uri "redis://localhost:6379"})
@@ -282,11 +303,12 @@ The `with-lock` macro implements a simple `acquire-with-timeout` + `finally rele
 ;; or {:status :omega-red.lock/not-acquired }  if the lock was not acquired
 
 
-;; Usage without component
+;; Usage without a system map - the lock still needs a started Omega Red client
 
-(let [jedis (Jedis. "redis://localhost:6379")
+(let [conn (component/start (omega-red.client/create {:uri "redis://localhost:6379"}))
       lock (-> (omega-red.lock/create {:lock-key "my-db-migration-sync-process"})
-               (assoc :conn jedis :lock-id (str "my-lock-" (random-uuid))))]
+               (assoc :conn conn)
+               component/start)]
   (when (omega-red.lock/acquire-with-timeout lock)
     (try
       ;; do your db migration here
@@ -340,9 +362,21 @@ However, the return values of commands like `keys` or `scan` will include the pr
 ```
 
 
+# Development
+
+Tooling (Java, Leiningen, clojure-lsp) is managed with [mise](https://mise.jdx.dev): run `mise install`, then `mise tasks` to list available tasks:
+
+- `mise run test` - regenerates the command config and runs the test suite, requires Redis or Valkey running on `localhost:6379` (override with `REDIS_HOST`/`REDIS_PORT`)
+- `mise run prep-resources` - regenerates `resources/redis-commands.edn` from Redis' command spec, same as `lein gen-cmd-config`
+- `mise run fmt` / `mise run lint` - format and lint with clojure-lsp
+- `mise run deploy` - regenerates the command config and deploys to Clojars
+
 # Changelog
 
-- [3.0.1-SNAPSHOT] 
+- Unreleased
+  - **Bugfix** - `:connected?` is now `:omega-red.client/unknown` (was misspelled as `:omega-red.client/unkown`) when `:ping-on-start?` is not set
+
+- [3.0.1](https://github.com/lukaszkorecki/omega-red/tree/v3.0.1)
   - **Bugfix** - hash map reads are now correctly decoded. Jedis 8 changed return type. See [PR #13](https://github.com/lukaszkorecki/omega-red/pull/13)
 
 - [3.0.0](https://github.com/lukaszkorecki/omega-red/releases/tag/v3.0.0) - **Breaking changes**

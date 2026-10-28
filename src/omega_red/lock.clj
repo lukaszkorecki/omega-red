@@ -9,16 +9,17 @@
   (acquire-with-timeout [this] [this opts] "Like `acquire` but will wait for the lock to be available up to `acquire-timeout-ms` milliseconds.
    If the lock is not acquired within that time, returns false.")
   (renew [this] "Renew the lock. Returns true if renewed, false otherwise.")
-  (release [this] "Release the lock. Returns true if released, false otherwise.")
-  (get-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
-  (get-lock-holder-id [this] "Get ID of the lock holder. Returns the ID of the lock holder.")
+  (release [this] "Release the lock. Always returns true, even if this instance was not the lock holder.")
+  (get-id [this] "Returns the lock ID of this instance, regardless of whether it holds the lock.")
+  (get-lock-holder-id [this] "Returns the lock ID of the current lock holder, nil if the lock is not held.")
   (is-lock-holder? [this] "Check if this instance is the lock holder. Returns true if it is, false otherwise.")
-  (lock-expiry-in-ms [this] "Returns number of milliseconds until the lock expires. Nil if lock doesn't exist"))
+  (lock-expiry-in-ms [this] "Returns number of milliseconds until the lock expires.
+   If the lock doesn't exist, the result is negative - don't rely on it to check if the lock is held, use `is-lock-holder?` instead."))
 
 (def ^:private not-blank? (complement str/blank?))
 
 ;; Implementation
-;; Lua scripts to guarantee atomicty, although we could use transactions perhaps?
+;; Lua scripts to guarantee atomicity, although we could use transactions perhaps?
 
 (def ^:const lock-script
   (slurp (io/resource "locks-scripts/lock.lua")))

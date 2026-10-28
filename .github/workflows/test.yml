@@ -47,7 +47,7 @@ jobs:
     - name: Install dependencies
       run: lein deps
 
-    - name: Prepeare command config
+    - name: Prepare command config
       run: lein gen-cmd-config
 
     - name: Run omega-red tests for ${{ matrix.version }}
